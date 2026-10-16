@@ -1,0 +1,73 @@
+# ESTIMA — Calculadora paramétrica de ingeniería
+
+Calculadora de esfuerzo de ingeniería multidisciplinaria por actividad, etapa, disciplina y perfil. Sitio **estático**, compatible con **GitHub Pages** y sin servidor de backend.
+
+## Estructura
+
+```text
+estima-ingenieria-github/
+├── index.html                  # Página principal
+├── css/
+│   ├── base.css                # Estilos base y de impresión
+│   └── hydra.css               # Identidad visual Hydra y diseño responsive
+├── js/
+│   ├── config.js               # Disciplinas, etapas, escenarios, estado y perfiles
+│   ├── estimacion.js           # Cantidades, H/H, factores, alertas y totales
+│   ├── interfaz.js             # Dashboard, formularios y matriz de entregables
+│   ├── exportacion.js          # CSV, JSON, impresión/PDF
+│   └── app.js                  # Eventos, interacción y arranque
+├── data/
+│   └── biblioteca_ratios.json  # 72 registros: ratios, fuentes y actividades
+└── docs/
+    └── metodologia.md         # Notas y supuestos de cálculo
+```
+
+## Publicar gratis en GitHub Pages
+
+1. Crear un repositorio público nuevo en GitHub (por ejemplo `estima-ingenieria`).
+2. Subir **el contenido** de esta carpeta a la **raíz** del repositorio: `index.html`, las carpetas `css`, `js`, `data`, `docs`, y los otros archivos de raíz. No subir una carpeta contenedora extra.
+3. Entrar a **Settings → Pages → Build and deployment** y elegir **Deploy from a branch**.
+4. Elegir la rama `main` y carpeta `/ (root)`, y guardar.
+5. Cuando Pages termine de publicar, la URL tendrá el formato `https://TU-USUARIO.github.io/estima-ingenieria/`.
+
+Para un repositorio de usuario llamado `TU-USUARIO.github.io`, la URL será `https://TU-USUARIO.github.io/`.
+
+## Probarlo en tu computadora
+
+**No** abrir `index.html` por doble clic: la biblioteca JSON se carga con `fetch()` y normalmente el navegador no permite este acceso usando `file://`.
+
+En la carpeta del proyecto, ejecutar:
+
+```bash
+python -m http.server 8000
+```
+
+Luego abrir <http://localhost:8000/>. Con VS Code también sirve **Live Server**.
+
+## Cómo funcionan las etapas
+
+- **Situación previa** + **Objetivo** marcan automáticamente las casillas de Conceptual, Básica y Detalle.
+- Las **tres casillas siguen siendo independientes**: podés quitar o agregar cualquiera.
+- Si modificás una casilla manualmente, queda en selección personalizada hasta volver a elegir una situación/objetivo.
+- La aplicación advierte sobre posibles dependencias (por ejemplo, detalle sin básica disponible), pero no añade tareas sin tu permiso.
+- Se pueden guardar y recuperar proyectos en JSON; los ajustes se conservan también en el navegador si hay almacenamiento disponible.
+
+## Editar ratios o fórmulas
+
+- Valores bibliográficos y supuestos: `data/biblioteca_ratios.json` (registro `ratios`, campos como `hh_unitarias`, `etapa`, `disciplina`, etc.).
+- Conversión de magnitudes físicas a cantidades de entregables (supuestos): `js/estimacion.js` → `quantityGuess()`.
+- Fórmula y lógica de horas: `js/estimacion.js` → `lineCompute()` y `calculate()`.
+- Escenarios de obra y selección: `js/config.js` → `FAMILIES`, `computeStageSet()`; interfaz `js/interfaz.js`.
+- UI y colores: `css/hydra.css`.
+
+**Advertencia técnica:** muchas H/H de la biblioteca son hipótesis sin validación. Los coeficientes de m², m³ y toneladas se utilizan para prever cantidades de documentos, no como ratios universales de ingeniería. Calibrar con proyectos reales antes de presentar propuestas contractuales. La tarifa es una sola tarifa promedio; el total no incluye margen comercial.
+
+## Dependencias
+
+- No necesita Node, `npm`, compilación ni base de datos.
+- Utiliza Tailwind mediante CDN y tipografías Google Fonts; requiere conexión para esas dependencias visuales. Los cálculos están implementados en JavaScript local.
+- Los proyectos y datos ingresados no se envían a un backend propio: se guardan en `localStorage` en el navegador o en un JSON descargado por el usuario.
+
+## Licencias y fuentes
+
+Las notas y referencias bibliográficas de cada actividad están incluidas en `data/biblioteca_ratios.json` y en el panel de metodología. Esta biblioteca es un borrador de trabajo, no una norma AACE ni una base de productividad certificada.

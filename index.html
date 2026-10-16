@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Estimador paramétrico de horas hombre de ingeniería multidisciplinaria, por etapa, disciplina y entregable.">
+<title>ESTIMA · Ingeniería Paramétrica v3.0</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/base.css">
+<link rel="stylesheet" href="./css/hydra.css">
+</head>
+<body>
+<header class="topbar" aria-label="Barra principal">
+  <div class="brand"><div class="brand-icon">Σ</div><div class="brand-copy"><strong>ESTIMA</strong><span>INGENIERÍA / H-H</span></div><span class="release">V3.0</span></div>
+  <div class="tb-divider"></div>
+  <div class="topActions" aria-label="Acciones de proyecto">
+    <button class="tb-btn" data-action="save" type="button" title="Guardar proyecto en JSON">↧ Guardar</button>
+    <button class="tb-btn" data-action="load" type="button" title="Abrir proyecto JSON">↥ Abrir</button>
+    <button class="tb-btn" data-action="csv" type="button" title="Exportar matriz a CSV">▤ CSV</button>
+    <button class="tb-btn primary" data-action="print" type="button" title="Imprimir o guardar como PDF">⎙ PDF / Propuesta</button>
+  </div>
+  <div class="statusZone"><span class="savingBadge" id="calcStatus">● Estimación actualizada</span><span class="topHint">Cálculo local</span></div>
+</header>
+<div id="screen" class="app">
+  <div class="calibrationStrip"><span class="alertMark">!</span><span><strong>MODELO EN CALIBRACIÓN</strong> · H/H de ingeniería de diseño, no de construcción. <span class="stripExtra">Los ratios C son hipótesis; los B son referencias de alcance específico. Revisá el presupuesto antes de contratar.</span></span></div>
+  <div class="gridMain">
+    <aside id="sidebar" class="sidebar" aria-label="Configuración del proyecto"></aside>
+    <main id="dashboard" class="dashboard" aria-label="Resultados y matriz de entregables"></main>
+  </div>
+  <div class="footer">ESTIMA v3.0 · Herramienta de estimación preliminar · Datos almacenados localmente en tu navegador · 72 actividades incluidas</div>
+</div>
+<article id="printReport" aria-label="Propuesta técnica para impresión"></article>
+
+<script defer src="./js/config.js"></script>
+<script defer src="./js/estimacion.js"></script>
+<script defer src="./js/interfaz.js"></script>
+<script defer src="./js/exportacion.js"></script>
+<script defer src="./js/app.js"></script>
+
+</body>
+</html>
