@@ -17,18 +17,18 @@ estima-ingenieria-github/
 │   ├── exportacion.js          # CSV, JSON, impresión/PDF
 │   └── app.js                  # Eventos, interacción y arranque
 ├── data/
-│   └── biblioteca_ratios.json  # 72 registros: ratios, fuentes y actividades
+│   └── biblioteca_ratios.json  # 101 registros: 72 previos + 29 nuevos, contenido y fuentes de alcance
 └── docs/
     └── metodologia.md         # Notas y supuestos de cálculo
 ```
 
 ## Publicar gratis en GitHub Pages
 
-1. Crear un repositorio público nuevo en GitHub (por ejemplo `estima-ingenieria`).
+1. Crear un repositorio público nuevo en GitHub (en tu caso, `iggarcia2/estima-ingenieria`).
 2. Subir **el contenido** de esta carpeta a la **raíz** del repositorio: `index.html`, las carpetas `css`, `js`, `data`, `docs`, y los otros archivos de raíz. No subir una carpeta contenedora extra.
 3. Entrar a **Settings → Pages → Build and deployment** y elegir **Deploy from a branch**.
 4. Elegir la rama `main` y carpeta `/ (root)`, y guardar.
-5. Cuando Pages termine de publicar, la URL tendrá el formato `https://TU-USUARIO.github.io/estima-ingenieria/`.
+5. Cuando Pages termine de publicar, la URL tendrá el formato `https://iggarcia2.github.io/estima-ingenieria/`.
 
 Para un repositorio de usuario llamado `TU-USUARIO.github.io`, la URL será `https://TU-USUARIO.github.io/`.
 
@@ -52,9 +52,21 @@ Luego abrir <http://localhost:8000/>. Con VS Code también sirve **Live Server**
 - La aplicación advierte sobre posibles dependencias (por ejemplo, detalle sin básica disponible), pero no añade tareas sin tu permiso.
 - Se pueden guardar y recuperar proyectos en JSON; los ajustes se conservan también en el navegador si hay almacenamiento disponible.
 
+## Qué cambió en V4
+
+- **101 actividades** (72 originales + 29 nuevas). Las nuevas son hipótesis horarias de categoría **C**, no ratios publicados por CAI.
+- **CATÁLOGO CAI/CEPSI:** fichas desplegables describen alcance, documentos relacionados, inclusión/exclusión y apartado de bibliografía. La fuente documental justifica qué se entrega, no cuánto demora.
+- **Tres etapas independientes** (Conceptual, Básica, Detalle); se mantienen las situaciones previas que marcan automáticamente los tres checkboxes. Al activar **Básica**, se puede elegir convencional o extendida; la extendida agrega documentos específicos opcionales.
+- **Revisiones adicionales**: cantidad de rondas y factor por ronda; por defecto 0 rondas y 0,12 por ronda (editable). Las H/H base ya incluyen revisión interna normal; la ronda extra se indica separadamente.
+- **Modelo 3D**: sin modelo, parcial e integral; LOD a definir/200/300/350/400, entregables seleccionables por especialidad y coordinación 30/60/90, interferencias. No se suman nuevas actividades 3D por el solo hecho de elegir el tipo de modelo: se activan en la matriz o usando el botón “Sugerir”. **Elegir un LOD registra el alcance contractual, pero todavía no modifica automáticamente el ratio de horas.**
+- **CSV y PDF mejorados** con contenido por entregable, fuente de alcance, desglose de revisiones y exclusiones, además de horas por perfil.
+- Proyectos V3 guardados localmente pueden recuperarse como punto de partida (salvo incompatibilidades de versiones); también se pueden abrir sus JSON.
+
+**Fuentes documentales aportadas**: CAI/CEPSI `SC01-01-0-Alcances_de_Ingenieria.pdf`, `GESTION BASICA.pdf`, `Modelado3D_segun Alcance de Ingenieria.pdf`. Estos documentos **no proporcionan los coeficientes horarios** añadidos en V4.
+
 ## Editar ratios o fórmulas
 
-- Valores bibliográficos y supuestos: `data/biblioteca_ratios.json` (registro `ratios`, campos como `hh_unitarias`, `etapa`, `disciplina`, etc.).
+- Valores bibliográficos y supuestos: `data/biblioteca_ratios.json` (registro `ratios`, campos como `hh_unitarias`, `etapa`, `disciplina`, `referencia_alcance`, `contenido_referencia`, etc.).
 - Conversión de magnitudes físicas a cantidades de entregables (supuestos): `js/estimacion.js` → `quantityGuess()`.
 - Fórmula y lógica de horas: `js/estimacion.js` → `lineCompute()` y `calculate()`.
 - Escenarios de obra y selección: `js/config.js` → `FAMILIES`, `computeStageSet()`; interfaz `js/interfaz.js`.

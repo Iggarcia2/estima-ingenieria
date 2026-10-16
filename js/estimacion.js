@@ -14,21 +14,38 @@ function quantityGuess(r){
  n_listados_carga:pw>0?1:0,n_unifilares:bo>0?bo:(pw>0?1:0),n_planos_electricos_genericos:bo>0?ceil(bo,2):0,n_planos_bandejas:bo>0?ceil(bo,2):0,n_circuitos_calculados:ci,n_tableros:bo,n_ambientes_iluminacion:ceil(a,500),n_sistemas_tierra:pw>0?1:0,
  n_filosofias_control:ins>0?1:0,n_instrumentos:ins,n_sistemas_control:ins>0?1:0,n_planos_instrumentacion_genericos:ceil(ins,25),n_lazos:lo,n_tipos_hookup:ceil(ins,12),n_instrumentos_especificados:ins,n_senales_io:io,n_matrices_causa_efecto:ceil(lo,25),
  n_hazid:(a||eq||li)?1:0,n_matrices_riesgo:(a||eq||li)?1:0,n_matrices_ambientales:(a||eq||li)?1:0,n_planos_emergencia:ceil(a,1500),n_planos_senializacion:ceil(a,1500),n_estudios_hse:(eq||li)?1:0,
- n_hh_reunion_inicial:3,n_participaciones_reuniones:6,n_documentos_rondas_extra:0,n_emisiones:10
+ n_hh_reunion_inicial:3,n_participaciones_reuniones:6,n_documentos_rondas_extra:0,n_emisiones:10,
+ n_bases_diseno:1,n_sistemas_civiles:co>0||a>0?1:0,n_estudios_suelos:co>0?1:0,n_computos_civiles:co>0?1:0,n_sistemas_estructurales:st>0?1:0,
+ n_equipos_criticos:eq>0?Math.max(1,Math.ceil(eq*.15)):0,n_sistemas_piping:li>0?1:0,n_areas_piping:ceil(li,30),n_salaselectricas:pw>0?ceil(pw,1000):0,n_sistemas_electricos:pw>0?1:0,
+ n_valvulas_control:ceil(ins*.12,1),n_planos_i_canales:ceil(ins,35),n_hazop_nodos:pid>0?Math.ceil(pid*2):0,n_pei:1,n_libros_finales:1,
+ n_areas_3d_civil:co>0?ceil(co,300):0,n_areas_3d_est:st>0?ceil(st,50):0,n_areas_3d_elec:pw>0?ceil(pw,1200):0,n_areas_3d_ins:ins>0?ceil(ins,120):0,
+ n_reviews_3d:3,n_reportes_clash:3,n_areas_3d_coord:(st||co||pw||li)?Math.max(1,ceil(a,1600)):0
  };
  return safeNum(map[r.variable_cantidad],0,0,100000000);
 }
 function opts(r){return state.overrides[r.id]||{};}
 function qty(r,direct=0,piping=0){if(r.metodo==='fraction_of_direct')return direct;if(r.metodo==='fraction_of_piping')return piping;const o=opts(r);return state.mode==='detallado'&&o.quantity!==undefined?safeNum(o.quantity,0):quantityGuess(r);}
-function active(r){return !!state.selected[r.id]&&!!state.disc[r.disciplina]&&!!state.stages[r.etapa];}
-function lineCompute(r,q){const o=opts(r);const rate=safeNum(o.rate??r.hh_unitarias,r.hh_unitarias,0,1e6);const fc=safeNum(o.complexity??1,1,0,20);const fr=safeNum(o.repetition??1,1,0,20);const h=q*rate*fc*fr;return {r,q,rate,fc,fr,hh:Number.isFinite(h)?h:0};}
+function stageEligible(r){return r.etapa==='basica_ext'?!!state.stages.basica&&state.basicScope==='extendida':!!state.stages[r.etapa];}
+function modelEligible(r){return !r.actividad_modelado_3d||state.model3d!=='ninguno';}
+function active(r){return !!state.selected[r.id]&&!!state.disc[r.disciplina]&&stageEligible(r)&&modelEligible(r);}
+function lineCompute(r,q){const o=opts(r);const rate=safeNum(o.rate??r.hh_unitarias,r.hh_unitarias,0,1e6);const fc=safeNum(o.complexity??1,1,0,20);const fr=safeNum(o.repetition??1,1,0,20);const h=q*rate*fc*fr;const hhBase=Number.isFinite(h)?h:0;
+ const rounds=state.clientRounds||0;const rr=state.roundFactor||0;const revisionExtra=(r.disciplina==='GES'||r.metodo!=='quantity')?0:hhBase*rounds*rr;
+ const hh=hhBase+revisionExtra;return {r,q,rate,fc,fr,hhBase,revisionExtra,hh};}
 function calculate(){
  const rows=[],byDisc=Object.fromEntries(DISC.map(d=>[d.id,0])),byRole=Object.fromEntries(Object.keys(ROLE_LABEL).map(k=>[k,0]));let direct=0,piping=0,indirect=0;
  for(const r of RATIOS.filter(r=>r.disciplina!=='GES')){if(!active(r))continue;const row=lineCompute(r,qty(r));rows.push(row);direct+=row.hh;byDisc[r.disciplina]+=row.hh;if(r.disciplina==='PIP')piping+=row.hh;}
  for(const r of RATIOS.filter(r=>r.disciplina==='GES')){if(!active(r))continue;const row=lineCompute(r,qty(r,direct,piping));rows.push(row);indirect+=row.hh;byDisc.GES+=row.hh;}
- for(const row of rows){const parts=row.r.reparto_perfiles_propuesto||{};const total=Object.values(parts).reduce((acc,val)=>acc+safeNum(val,0),0)||1;for(const [role,pct] of Object.entries(parts)){if(role in byRole)byRole[role]+=row.hh*(safeNum(pct,0)/total);}}
+ for(const row of rows){const parts=row.r.reparto_perfiles_propuesto||{};const totalPct=Object.values(parts).reduce((acc,val)=>acc+safeNum(val,0),0)||1;for(const [role,pct] of Object.entries(parts)){if(role in byRole)byRole[role]+=row.hhBase*(safeNum(pct,0)/totalPct);}
+ // Extra rondas de cliente: horas INCREMENTALES; reparto a ingeniero/revisor para no duplicar QA estándar.
+ if(row.revisionExtra){byRole.revisor+=row.revisionExtra*0.5;byRole.ingeniero+=row.revisionExtra*0.5;} }
  const total=direct+indirect, byClass={C:0,'B-caso':0,'B-practica':0};for(const x of rows)byClass[x.r.clasificacion]=(byClass[x.r.clasificacion]||0)+1;
  const warnings=[];
+ const extraRevisionHH=rows.reduce((t,x)=>t+x.revisionExtra,0), baseHH=rows.reduce((t,x)=>t+x.hhBase,0);
+ const byStage=Object.fromEntries(['conceptual','basica','basica_ext','detalle'].map(k=>[k,0]));for(const x of rows)byStage[x.r.etapa]+=x.hh;
+ if(state.clientRounds>0&&rows.some(x=>x.r.id==='GES-004'))warnings.push('Las rondas de cliente se agregaron por factor y también está activo GES-004: confirmar que no exista superposición.');
+ if(state.basicScope==='extendida'&&!state.stages.basica)warnings.push('Básica extendida no se aplica porque la etapa Básica no está seleccionada.');
+ if(state.model3d==='integral'&&!rows.some(x=>x.r.actividad_modelado_3d))warnings.push('Modelo 3D integral seleccionado, pero no hay actividades 3D activas. Revisar matriz y habilitar entregables de modelado.');
+ if(state.model3d!=='ninguno'&&state.lod==='definir'&&rows.some(x=>x.r.actividad_modelado_3d))warnings.push('Definir contractual y técnicamente el nivel de desarrollo (LOD) del modelo 3D.');
  if(rows.some(x=>x.r.id==='PRO-006')&&!rows.some(x=>x.r.id==='PRO-005')&&state.baseline!=='basica')warnings.push('El P&ID de detalle está valorizado como revisión incremental: verificar que exista un P&ID previo utilizable o incorporar las horas de base.');
  if(rows.some(x=>x.r.id==='PIP-002')&&rows.some(x=>x.r.id==='PIP-004'))warnings.push('Revisar superposición: dibujo de piping 2D y modelado 3D pueden incluir el mismo trabajo de diseño.');
  if(rows.some(x=>x.r.id==='GES-003')&&rows.some(x=>x.r.id==='GES-006'))warnings.push('Coordinación global y supervisión específica de piping podrían solaparse.');
@@ -41,5 +58,5 @@ function calculate(){
  if(!rows.length)warnings.push('No hay entregables activos con las etapas y disciplinas seleccionadas.');
  if(rows.some(x=>x.r.clasificacion==='C'))warnings.push('El cálculo incluye actividades con H/H categoría C: hipótesis de arranque sin calibración empírica.');
  if(rows.some(x=>x.r.disciplina==='CIV'||x.r.disciplina==='EST')&&getMetrics().area>0&&getMetrics().steel===0&&state.disc.EST)warnings.push('Revisar magnitudes: hay superficie civil pero el tonelaje estructural es cero.');
- return {rows,direct,indirect,total,budget:total*state.rate,byDisc,byRole,byClass,warnings};
+ return {rows,direct,indirect,total,budget:total*state.rate,byDisc,byRole,byClass,byStage,baseHH,extraRevisionHH,warnings};
 }

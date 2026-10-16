@@ -1,5 +1,6 @@
 /* ESTIMA · js/app.js · proyecto estático sin compilación */
 function handleAction(action){if(action==='print'){printReport();return;}if(action==='csv'){exportCSV();return;}if(action==='save'){exportJSON();return;}if(action==='load'){document.getElementById('loadJsonFile').click();return;}if(action==='reset'){if(confirm('¿Restablecer el proyecto, las selecciones y las tarifas a valores de ejemplo?')){state=initialState();persist();render();}return;}
+ if(action==='activar-3d'){mutate(()=>{if(state.model3d==='ninguno')state.model3d='parcial';for(const r of RATIOS){if(r.actividad_modelado_3d&&state.disc[r.disciplina]&&stageEligible(r))toggleSelected(r.id,true);}});activeResultTab='entregables';render();return;}
  if(action==='clear-overrides'){if(confirm('¿Restablecer todas las cantidades, ratios y factores editados?'))mutate(()=>{state.overrides={};});return;}
  if(action==='all-visible'){mutate(()=>{for(const r of visibleRatios())toggleSelected(r.id,true);});return;}
  if(action==='none-visible'){mutate(()=>{for(const r of visibleRatios())toggleSelected(r.id,false);});return;}
@@ -12,6 +13,9 @@ document.addEventListener('change',e=>{const el=e.target;
  if(el.dataset.select==='family'){mutate(()=>{const choice=el.value,config=FAMILIES[choice];if(!config)return;state.family=choice;state.metrics={...config.metrics};state.disc=Object.fromEntries(DISC.map(d=>[d.id,config.disc.includes(d.id)]));});return;}
  if(el.dataset.select==='baseline'){mutate(()=>{state.baseline=el.value in BASELINE_LABEL?el.value:'ninguna';if(STAGE_ORDER.indexOf(state.target)<=STAGE_ORDER.indexOf(state.baseline))state.target=STAGE_ORDER[STAGE_ORDER.indexOf(state.baseline)+1]||'detalle';updateStages();});return;}
  if(el.dataset.select==='target'){mutate(()=>{const t=el.value;if(STAGE_ORDER.includes(t)&&STAGE_ORDER.indexOf(t)>STAGE_ORDER.indexOf(state.baseline)){state.target=t;updateStages();}});return;}
+ if(el.dataset.select==='basicScope'){mutate(()=>{state.basicScope=el.value==='extendida'?'extendida':'convencional';});return;}
+ if(el.dataset.select==='model3d'){mutate(()=>{state.model3d=Object.hasOwn(MODEL_SCOPES,el.value)?el.value:'ninguno';});return;}
+ if(el.dataset.select==='lod'){mutate(()=>{state.lod=['definir','200','300','350','400'].includes(el.value)?el.value:'definir';});return;}
  if(el.dataset.select==='currency'){mutate(()=>{state.currency=el.value==='ARS'?'ARS':'USD';});return;}
 });
 document.addEventListener('click',e=>{const btn=e.target.closest('[data-action]');if(btn)handleAction(btn.dataset.action);});
@@ -22,7 +26,7 @@ async function startApp(){
  if(!library||!Array.isArray(library.ratios)||!library.fuentes)throw new Error('La biblioteca de ratios no tiene un formato válido.');
  LIB=library; RATIOS=LIB.ratios; BY_ID=Object.fromEntries(RATIOS.map(r=>[r.id,r]));
  state=initialState();
- try{const saved=localStorage.getItem(STORAGE_KEY);if(saved)state=mergeState(initialState(),JSON.parse(saved));}
+ try{const saved=localStorage.getItem(STORAGE_KEY)||localStorage.getItem('estimador_ingenieria_v1_estado');if(saved)state=mergeState(initialState(),JSON.parse(saved));}
  catch(err){console.warn('No se pudo cargar el proyecto guardado',err);}
  render();
 }

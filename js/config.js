@@ -3,7 +3,7 @@
 let LIB;
 let RATIOS;
 let BY_ID;
-const STORAGE_KEY = 'estimador_ingenieria_v1_estado';
+const STORAGE_KEY = 'estimador_ingenieria_v4_estado';
 const DISC = [
  {id:'PRO',name:'Procesos',short:'Procesos',color:'#467ca9'},
  {id:'CIV',name:'Civil y arquitectura',short:'Civil',color:'#628da8'},
@@ -15,10 +15,13 @@ const DISC = [
  {id:'HSE',name:'Seguridad y medio ambiente',short:'HSE',color:'#c07470'},
  {id:'GES',name:'Gestión de ingeniería',short:'Gestión',color:'#65798e'}
 ];
-const STAGE_LABEL={conceptual:'Conceptual',basica:'Básica',detalle:'Detalle'};
+const STAGE_LABEL={conceptual:'Conceptual',basica:'Básica',basica_ext:'Básica extendida',detalle:'Detalle'};
+const BASIC_SCOPES={convencional:'Básica convencional',extendida:'Básica extendida'};
+const MODEL_SCOPES={ninguno:'Sin modelo 3D',parcial:'Modelado 3D parcial',integral:'Modelo 3D multidisciplinario'};
 const STAGE_ORDER=['conceptual','basica','detalle'];
 const BASELINE_LABEL={ninguna:'No hay ingeniería previa aprobada',conceptual:'Conceptual existente y validada',basica:'Básica existente y validada'};
 const STAGE_EXPLAIN={
+ basica_ext:{purpose:'Profundizar la básica para licitación o decisión de inversión',items:'Cómputos más precisos, constructibilidad, equipos críticos, disposición mejorada y modelos requeridos.',examples:'P&IDs extendidos, layout optimizado, especificaciones críticas. Referencia CAI/CEPSI SC01 cap. 4.2.4.'},
  conceptual:{purpose:'Definir qué conviene hacer',items:'Criterios iniciales, alternativas, esquemas, implantación y predimensionamiento.',examples:'BFD, estudio de alternativas, implantación conceptual, HAZID preliminar.'},
  basica:{purpose:'Definir cómo será el proyecto',items:'Bases de diseño, memorias principales, diagramas, selección técnica y disposiciones generales.',examples:'PFD, P&ID preliminar, cálculo estructural global, hojas de datos, unifilar preliminar.'},
  detalle:{purpose:'Definir cómo ejecutar el diseño',items:'Cálculos finales, planos para construcción, especificaciones definitivas y documentación de montaje.',examples:'Planos de fundaciones, detalles de uniones, isométricos, lazos, planos eléctricos finales.'}
@@ -42,7 +45,7 @@ const FAMILIES={
  personalizado:{label:'Proyecto personalizado',disc:['CIV','EST','GES'],metrics:{area:600,concrete:60,steel:20,equipment:0,mass:0,lines:0,pid:0,power:0,boards:0,circuits:0,instruments:0,loops:0,io:0}}
 };
 const DEFAULT_SELECTED = new Set(('PRO-001 PRO-003 PRO-004 PRO-005 PRO-006 PRO-007 PRO-008 CIV-001 CIV-003 CIV-004 CIV-005 CIV-006 CIV-007 EST-001 EST-002 EST-003 EST-004 EST-005 EST-006 MEC-001 MEC-002 MEC-003 MEC-004 MEC-005 PIP-001 PIP-003 PIP-004 PIP-006 PIP-007 PIP-008 PIP-009 PIP-010 PIP-011 ELE-001 ELE-002 ELE-004 ELE-005 ELE-006 ELE-008 INS-001 INS-002 INS-003 INS-005 INS-006 INS-007 INS-008 INS-009 HSE-001 HSE-002 HSE-003 HSE-004 GES-001 GES-002 GES-003 GES-005').split(' '));
-function initialState(){return {project:'Proyecto industrial — estimación preliminar',description:'Desarrollo de ingeniería de instalaciones industriales. Alcance preliminar sujeto a validación.',family:'industrial',mode:'rapido',currency:'USD',rate:35,baseline:'ninguna',target:'detalle',stages:{conceptual:true,basica:true,detalle:true},disc:Object.fromEntries(DISC.map(d=>[d.id,true])),metrics:{...FAMILIES.industrial.metrics},selected:Object.fromEntries(RATIOS.map(r=>[r.id,DEFAULT_SELECTED.has(r.id)])),overrides:{},filter:'',onlySelected:false,qualityInfo:false,stageSelection:'auto',created:new Date().toISOString()};}
+function initialState(){return {project:'Proyecto industrial — estimación preliminar',description:'Desarrollo de ingeniería de instalaciones industriales. Alcance preliminar sujeto a validación.',family:'industrial',mode:'rapido',currency:'USD',rate:35,basicScope:'convencional',model3d:'parcial',lod:'definir',clientRounds:0,roundFactor:0.12,baseline:'ninguna',target:'detalle',stages:{conceptual:true,basica:true,detalle:true},disc:Object.fromEntries(DISC.map(d=>[d.id,true])),metrics:{...FAMILIES.industrial.metrics},selected:Object.fromEntries(RATIOS.map(r=>[r.id,DEFAULT_SELECTED.has(r.id)])),overrides:{},filter:'',onlySelected:false,qualityInfo:false,stageSelection:'auto',created:new Date().toISOString()};}
 function mergeState(base,raw){
  if(!raw||typeof raw!=='object')return base;
  const s={...base,...raw};
@@ -62,6 +65,10 @@ function mergeState(base,raw){
  s.mode=s.mode==='detallado'?'detallado':'rapido';
  s.currency=s.currency==='ARS'?'ARS':'USD';
  s.rate=safeNum(s.rate,35,0,1000000000);
+ s.basicScope=Object.hasOwn(BASIC_SCOPES,s.basicScope)?s.basicScope:'convencional';
+ s.model3d=Object.hasOwn(MODEL_SCOPES,s.model3d)?s.model3d:'parcial';
+ s.lod=['definir','200','300','350','400'].includes(s.lod)?s.lod:'definir';
+ s.clientRounds=safeNum(s.clientRounds,0,0,10);s.roundFactor=safeNum(s.roundFactor,0.12,0,2);
  return s;
 }
 let state; // initialized after fetching data/biblioteca_ratios.json

@@ -116,3 +116,21 @@ Proyecto y familia; etapa; descripción y tamaño físico; documentos entregados
 ## Estado de la V1.0
 
 **Prototipo de biblioteca, no herramienta certificada:** no hay validación propia, ni coeficientes universales para todas las tareas, ni factores de incertidumbre demostrados. Es apta para configurar, revisar y probar la futura calculadora, pero requiere juicio profesional y contraste con proyectos reales antes de emitir presupuestos comerciales.
+
+
+## Anexo V4 · Alcance documental CAI/CEPSI
+
+Se distinguieron expresamente dos planos de evidencia: **fuentes de alcance** (`referencia_alcance` en `biblioteca_ratios.json`) y **fuentes de horas** (`clasificacion` y `fuente_id`). Los documentos CAI/CEPSI describen las etapas y entregables, pero NO publican H/H unitarias de las actividades nuevas. Los 29 registros nuevos son hipótesis categoría C.
+
+Se mantienen tres etapas contractuales independientes; Básica Extendida es un subtipo de Básica, no se activa sin la etapa Básica.
+
+Modelo de revisiones: `HH_base = cantidad × ratio × complejidad × repetición`, `HH_extra = HH_base × rondas_de_cliente × factor_por_ronda` para actividades técnicas no porcentuales y excluyendo gestión general. La revisión interna estándar **ya está incluida** en las H/H de biblioteca, de modo que, con 0 rondas de cliente, las H/H base no cambian. La adición de horas de revisión extra se reparte provisionalmente 50% Ingeniero / 50% Revisor, configurable en futuras versiones. No seleccionar simultáneamente `GES-004` como revisión duplicada.
+
+El modelado 3D se incorpora como opción independiente, con LOD y actividades seleccionables por disciplina; además están las revisiones formales 30/60/90, la coordinación y el chequeo de interferencias. El avance de modelado del manual CAI no es un ratio de H/H.
+
+### Fuentes aportadas y secciones
+- `SC01-01-0-Alcances_de_Ingenieria.pdf`: sección 4.2 (etapas); 5 (alcances); 6.1 (tabla por especialidad/fase); 6.3–6.6 (contenido documental).
+- `GESTION BASICA.pdf`: capítulos 3–6 (desglose, PEI, codificación y ciclo de documentos).
+- `Modelado3D_segun Alcance de Ingenieria.pdf`: capítulos 4–9 (alcance, design reviews, avance, interferencias y LOD).
+
+**Pendiente de ingeniería:** validar los predictores de cantidad por métricas físicas y ajustar todas las H/H hipótesis con proyectos realmente ejecutados antes de ofertar contratos.

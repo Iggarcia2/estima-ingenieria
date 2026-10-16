@@ -42,3 +42,17 @@ body{background:var(--bg)}button,input,select,textarea{font-family:var(--font-mo
 .phaseChoice input{accent-color:var(--teal)}
 .scopeNotice strong{color:var(--teal)}
 @media(max-width:470px){.phaseChoices{gap:6px}.phaseChoice{padding:7px 8px}}
+/* V4 — Evidencia, fichas técnicas y revisión documental */
+.scopeTag{display:inline-block;margin:4px 0 1px;padding:2px 5px;border-radius:2px;font:500 9px var(--font-mono);color:#93c5fd;background:rgba(96,165,250,.09);border:1px solid rgba(96,165,250,.22);white-space:nowrap}
+.sourceCell{min-width:80px}.sourceCell .tinyBadge{white-space:nowrap;display:inline-block}
+.deliverableInfo{font-size:9px;color:#9292a0;margin-top:5px;max-width:350px}
+.deliverableInfo summary{cursor:pointer;color:#2dd4bf;list-style:none;outline-offset:3px}
+.deliverableInfo summary:before{content:'▸ ';color:#2dd4bf}
+.deliverableInfo[open] summary:before{content:'▾ '}
+.deliverableInfo[open]{white-space:normal;background:#1b1b20;border:1px solid rgba(96,165,250,.18);border-radius:3px;padding:6px 8px;color:#a9a9b3;line-height:1.55}
+.deliverableInfo div{margin:5px 0}.deliverableInfo strong{color:#d0d0d7}
+.miniMetricBand{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 12px}
+.miniMetricBand>div{background:#19191d;border:1px solid rgba(255,255,255,.07);padding:8px;border-radius:3px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.miniMetricBand span{font-size:9px;color:#9393a0}.miniMetricBand strong{font-size:12px;color:#2dd4bf;font-family:var(--font-mono);white-space:normal}
+@media(max-width:720px){.miniMetricBand{grid-template-columns:1fr}.deliverableInfo{max-width:250px}}
+@media print{.deliverableInfo,.scopeTag{display:none!important}}
