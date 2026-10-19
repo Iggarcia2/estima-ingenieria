@@ -1,0 +1,26 @@
+// node tests/verificar_modelado_v44.js
+const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('assert/strict');
+const root=path.join(__dirname,'..');
+const c=vm.createContext({console, Intl, Date, Number, Math, Object, Array, Set, localStorage:{setItem(){},getItem(){return null}}});
+for(const name of ['config.js','estimacion.js','interfaz.js'])vm.runInContext(fs.readFileSync(path.join(root,'js',name),'utf8'),c);
+const lib=JSON.parse(fs.readFileSync(path.join(root,'data/biblioteca_ratios.json')));
+const cal=JSON.parse(fs.readFileSync(path.join(root,'data/calibracion.json')));
+vm.runInContext(`LIB=${JSON.stringify(lib)};RATIOS=LIB.ratios;BY_ID=Object.fromEntries(RATIOS.map(r=>[r.id,r]));CALIBRATION=mergeCalibration(${JSON.stringify(cal)});state=initialState();`,c);
+const e=(x)=>vm.runInContext(x,c);
+const original=e('calculate().total');
+e(`model3dDraft=new3dDraft();model3dDraft.model3d='integral';model3dDraft.lod='400';`);
+assert.equal(e('calculate().total'),original,'Los cambios preparados aún no se aplican');
+const proposed=e('preview3d().next.total');
+assert.ok(proposed>original,'Debe aumentar con modelado integral y LOD 400');
+e('state=draft3dState();model3dDraft=null;');
+assert.ok(Math.abs(e('calculate().total')-proposed)<1e-8);
+const current=e('calculate().total');
+e(`model3dDraft=new3dDraft();model3dDraft.model3d='ninguno';`);
+assert.ok(e('preview3d().next.total')<current,'Quitar modelo explícitamente reduce H/H');
+assert.equal(e('calculate().total'),current,'La vista previa no muta el presupuesto');
+assert.equal(e('CALIBRATION.lodFactors["400"]'),1.45);
+e(`state.lod='300';`);const lod300=e('calculate().total');
+e(`state.lod='400';`);const lod400=e('calculate().total');
+assert.ok(lod400>lod300,'LOD 400 debe costar más H/H geométricas que LOD 300');
+assert.equal(e('state.selected["PIP-005"]'),false,'No activa isométricos manuales');
+console.log('✓ V4.4: vista previa inmutable, aplicación, menor alcance, LOD y no sustitución manual');

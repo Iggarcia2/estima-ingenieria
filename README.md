@@ -1,3 +1,17 @@
+# ESTIMA V4.4 – guía de campos y modelo 3D presupuestado
+
+**Novedades**
+
+- Nueva pestaña **Guía de campos**: explica proyecto, etapas, 13 métricas físicas, H/H, Fc/Fr, calibración y LOD.
+- **Modelo 3D**: selecciona alcance (ninguno, parcial por disciplina, o integral), nivel LOD y especialidades.
+- Vista previa de **H/H y presupuesto actual vs. propuesto**. Los selectores NO cambian la cotización hasta hacer clic en **Aplicar cambios 3D al presupuesto**.
+- Los trabajos 2D/manuales no se eliminan automáticamente. Las extracciones de isométricos y MTO CAD siguen siendo alternativas que se eligen manualmente en la matriz.
+- LOD aplica un multiplicador de H/H solo a la geometría 3D. Factores **hipotéticos y editables** en Calibración: LOD 200=0,70; 300=1,00; 350=1,20; 400=1,45; sin definir=1,00. **NO son tablas oficiales CAI/BIM**.
+- Configuración de LOD guardable con `data/calibracion.json`, y proyectos existentes compatibles.
+- Todo se puede alojar en GitHub Pages.
+
+**Precaución:** el modelo 3D está clasificado actualmente en etapa de detalle. Si cotizás solo conceptual o básica, tendrás que habilitar Detalle para computar las actividades 3D de esta versión. Revisá superposiciones con planos manuales en Control de Alcance.
+
 # ESTIMA V4.3 — Calculadora paramétrica de ingeniería
 
 Calculadora de esfuerzo de ingeniería multidisciplinaria por actividad, etapa, disciplina y perfil. Sitio **estático**, compatible con **GitHub Pages** y sin servidor de backend.
@@ -58,7 +72,7 @@ Luego abrir <http://localhost:8000/>. Con VS Code también sirve **Live Server**
 - **CATÁLOGO CAI/CEPSI:** fichas desplegables describen alcance, documentos relacionados, inclusión/exclusión y apartado de bibliografía. La fuente documental justifica qué se entrega, no cuánto demora.
 - **Tres etapas independientes** (Conceptual, Básica, Detalle); se mantienen las situaciones previas que marcan automáticamente los tres checkboxes. Al activar **Básica**, se puede elegir convencional o extendida; la extendida agrega documentos específicos opcionales.
 - **Revisiones adicionales**: cantidad de rondas y factor por ronda; por defecto 0 rondas y 0,12 por ronda (editable). Las H/H base ya incluyen revisión interna normal; la ronda extra se indica separadamente.
-- **Modelo 3D**: sin modelo, parcial e integral; LOD a definir/200/300/350/400, entregables seleccionables por especialidad y coordinación 30/60/90, interferencias. No se suman nuevas actividades 3D por el solo hecho de elegir el tipo de modelo: se activan en la matriz o usando el botón “Sugerir”. **Elegir un LOD registra el alcance contractual, pero todavía no modifica automáticamente el ratio de horas.**
+- **Modelo 3D**: sin modelo, parcial e integral; LOD a definir/200/300/350/400, entregables seleccionables por especialidad y coordinación 30/60/90, interferencias. No se suman nuevas actividades 3D por el solo hecho de elegir el tipo de modelo: en la pestaña Modelo 3D hay que confirmar Aplicar cambios, o seleccionar trabajos manualmente en la matriz. **Desde V4.4, elegir un LOD y presionar Aplicar afecta las H/H de modelado geométrico a través de un factor provisional configurable.**
 - **CSV y PDF mejorados** con contenido por entregable, fuente de alcance, desglose de revisiones y exclusiones, además de horas por perfil.
 - Proyectos V3 guardados localmente pueden recuperarse como punto de partida (salvo incompatibilidades de versiones); también se pueden abrir sus JSON.
 
@@ -88,7 +102,7 @@ Las notas y referencias bibliográficas de cada actividad están incluidas en `d
 ## Corrección V4.1 — Agregar modelado 3D sin descontar horas
 
 - Los botones de selección de entregables ya no desmarcan silenciosamente alternativas.
-- «Agregar entregables 3D» incorpora tareas 3D adicionales y respeta todos los trabajos ya seleccionados.
+- «Aplicar cambios 3D» incorpora los trabajos correspondientes al alcance elegido, con vista previa y sin sustituir trabajos manuales 2D. Si se desactiva explícitamente una disciplina 3D, sus horas de modelado pueden disminuir.
 - Si hay isométricos o MTO manuales seleccionados, el botón no activa automáticamente el método alternativo derivado del modelo. El usuario puede activarlo manualmente cuando tenga sentido y ajustar sus cantidades.
 - Cuando ambas rutas manual/3D están activas, el cálculo advierte del posible doble cómputo.
 - No se modifican ratios, precios por H/H ni coeficientes financieros.

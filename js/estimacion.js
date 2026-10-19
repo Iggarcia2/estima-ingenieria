@@ -28,9 +28,9 @@ function qty(r,direct=0,piping=0){if(r.metodo==='fraction_of_direct')return dire
 function stageEligible(r){return r.etapa==='basica_ext'?!!state.stages.basica&&state.basicScope==='extendida':!!state.stages[r.etapa];}
 function modelEligible(r){return !r.actividad_modelado_3d||state.model3d!=='ninguno';}
 function active(r){return !!state.selected[r.id]&&!!state.disc[r.disciplina]&&stageEligible(r)&&modelEligible(r);}
-function lineCompute(r,q){const o=opts(r);const rate=safeNum(o.rate??effectiveRate(r),effectiveRate(r),0,1e6);const fc=safeNum(o.complexity??1,1,0,20);const fr=safeNum(o.repetition??1,1,0,20);const h=q*rate*fc*fr;const hhBase=Number.isFinite(h)?h:0;
+function lineCompute(r,q){const o=opts(r);const rate=safeNum(o.rate??effectiveRate(r),effectiveRate(r),0,1e6);const fc=safeNum(o.complexity??1,1,0,20);const fr=safeNum(o.repetition??1,1,0,20);const lodFactor=lodMultiplier(r);const h=q*rate*fc*fr*lodFactor;const hhBase=Number.isFinite(h)?h:0;
  const rounds=state.clientRounds||0;const rr=state.roundFactor||0;const revisionExtra=(r.disciplina==='GES'||r.metodo!=='quantity')?0:hhBase*rounds*rr;
- const hh=hhBase+revisionExtra;return {r,q,rate,fc,fr,hhBase,revisionExtra,hh};}
+ const hh=hhBase+revisionExtra;return {r,q,rate,fc,fr,lodFactor,hhBase,revisionExtra,hh};}
 function calculate(){
  const rows=[],byDisc=Object.fromEntries(DISC.map(d=>[d.id,0])),byRole=Object.fromEntries(Object.keys(ROLE_LABEL).map(k=>[k,0]));let direct=0,piping=0,indirect=0;
  for(const r of RATIOS.filter(r=>r.disciplina!=='GES')){if(!active(r))continue;const row=lineCompute(r,qty(r));rows.push(row);direct+=row.hh;byDisc[r.disciplina]+=row.hh;if(r.disciplina==='PIP')piping+=row.hh;}
@@ -58,6 +58,7 @@ function calculate(){
  if(state.basicScope==='extendida'&&!state.stages.basica)warnings.push('Básica extendida no se aplica porque la etapa Básica no está seleccionada.');
  if(state.model3d==='integral'&&!rows.some(x=>x.r.actividad_modelado_3d))warnings.push('Modelo 3D integral seleccionado, pero no hay actividades 3D activas. Revisar matriz y habilitar entregables de modelado.');
  if(state.model3d!=='ninguno'&&state.lod==='definir'&&rows.some(x=>x.r.actividad_modelado_3d))warnings.push('Definir contractual y técnicamente el nivel de desarrollo (LOD) del modelo 3D.');
+ if(rows.some(x=>GEOMETRY_3D_IDS.has(x.r.id)))warnings.push('Los factores LOD de las horas de modelado geométrico son hipótesis ajustables en Calibración, no coeficientes oficiales CAI ni BIM.');
  if(rows.some(x=>x.r.id==='PRO-006')&&!rows.some(x=>x.r.id==='PRO-005')&&state.baseline!=='basica')warnings.push('El P&ID de detalle está valorizado como revisión incremental: verificar que exista un P&ID previo utilizable o incorporar las horas de base.');
  if(rows.some(x=>x.r.id==='PIP-002')&&rows.some(x=>x.r.id==='PIP-004'))warnings.push('Revisar superposición: dibujo de piping 2D y modelado 3D pueden incluir el mismo trabajo de diseño.');
  if(rows.some(x=>x.r.id==='PIP-005')&&rows.some(x=>x.r.id==='PIP-006'))warnings.push('ATENCIÓN: isométricos manuales y extracción 3D incluidos. Si corresponden a las mismas líneas, se están duplicando H/H. Elegir el método apropiado o repartir cantidades explícitamente.');

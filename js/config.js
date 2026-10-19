@@ -5,6 +5,9 @@ let RATIOS;
 let BY_ID;
 const STORAGE_KEY = 'estimador_ingenieria_v4_estado';
 const CALIBRATION_KEY='estimador_ingenieria_calibracion_v1';
+const LOD_DEFAULTS={definir:1,200:0.70,300:1,350:1.20,400:1.45}; // FACTORES PROVISORIOS, NO ratios CAI/BIM validados
+const LOD_GUIDE={definir:'No se ha definido el nivel de información exigido. Se usa factor provisional 1,00.',200:'Volúmenes y ubicación aproximada; geometría conceptual con atributos limitados.',300:'Geometría, dimensiones, posición y orientación definidas para coordinación de diseño.',350:'Incluye interfaces y encuentros relevantes entre sistemas y disciplinas.',400:'Componentes con definición suficiente para fabricación o montaje según alcance acordado.'};
+const GEOMETRY_3D_IDS=new Set(['PIP-003','PIP-004','BIM-001','BIM-002','BIM-003','BIM-004']);
 let CALIBRATION; // Calibración global persistente, INDEPENDIENTE del proyecto
 let PUBLISHED_CALIBRATION; // Valores base que llegaron desde data/calibracion.json
 const PHYSICAL_DRIVERS=[
@@ -26,11 +29,12 @@ const QUANTITY_DRIVERS=[
  {id:'t_por_plano_taller',label:'Toneladas por plano de taller',unit:'t/plano',default:5},
  {id:'equipos_por_especificacion',label:'Equipos por especificación mecánica',unit:'equipo/doc.',default:5}
 ];
-function defaultCalibration(){return {schema:'estima_calibracion_v1',version:'4.3',physicalHH:Object.fromEntries(PHYSICAL_DRIVERS.map(x=>[x.id,0])),quantityDrivers:Object.fromEntries(QUANTITY_DRIVERS.map(x=>[x.id,x.default])),rateOverrides:{}};}
+function defaultCalibration(){return {schema:'estima_calibracion_v1',version:'4.4',physicalHH:Object.fromEntries(PHYSICAL_DRIVERS.map(x=>[x.id,0])),quantityDrivers:Object.fromEntries(QUANTITY_DRIVERS.map(x=>[x.id,x.default])),lodFactors:{...LOD_DEFAULTS},rateOverrides:{}};}
 function mergeCalibration(value){
  const base=defaultCalibration(); if(!value||value.schema!=='estima_calibracion_v1')return base;
  for(const x of PHYSICAL_DRIVERS)base.physicalHH[x.id]=safeNum(value.physicalHH?.[x.id],0,0,1e5);
  for(const x of QUANTITY_DRIVERS)base.quantityDrivers[x.id]=safeNum(value.quantityDrivers?.[x.id],x.default,0.01,1e9);
+ for(const id of Object.keys(LOD_DEFAULTS))base.lodFactors[id]=safeNum(value.lodFactors?.[id],LOD_DEFAULTS[id],0.1,3);
  if(value.rateOverrides&&typeof value.rateOverrides==='object')for(const [id,v] of Object.entries(value.rateOverrides)){
   if(typeof id==='string'&&id.length<100&&Number.isFinite(Number(v)))base.rateOverrides[id]=safeNum(v,0,0,1e6);
  }
@@ -39,6 +43,7 @@ function mergeCalibration(value){
 function persistCalibration(){try{localStorage.setItem(CALIBRATION_KEY,JSON.stringify(CALIBRATION));return true;}catch(e){console.warn('Sin guardado local de calibración',e);return false;}}
 function calibrationDriver(id,fallback){return safeNum(CALIBRATION?.quantityDrivers?.[id],fallback,0.01,1e9);}
 function effectiveRate(r){return safeNum(CALIBRATION?.rateOverrides?.[r.id],r.hh_unitarias,0,1e6);}
+function lodMultiplier(r){return GEOMETRY_3D_IDS.has(r.id)?safeNum(CALIBRATION?.lodFactors?.[state.lod],1,0.1,3):1;}
 
 const DISC = [
  {id:'PRO',name:'Procesos',short:'Procesos',color:'#467ca9'},
@@ -53,7 +58,7 @@ const DISC = [
 ];
 const STAGE_LABEL={conceptual:'Conceptual',basica:'Básica',basica_ext:'Básica extendida',detalle:'Detalle'};
 const BASIC_SCOPES={convencional:'Básica convencional',extendida:'Básica extendida'};
-const MODEL_SCOPES={ninguno:'Sin modelo 3D',parcial:'Modelado 3D parcial',integral:'Modelo 3D multidisciplinario'};
+const MODEL_SCOPES={ninguno:'Sin modelo 3D',parcial:'Modelado 3D por disciplinas elegidas',integral:'Modelado 3D de todas las disciplinas activas'};
 const STAGE_ORDER=['conceptual','basica','detalle'];
 const BASELINE_LABEL={ninguna:'No hay ingeniería previa aprobada',conceptual:'Conceptual existente y validada',basica:'Básica existente y validada'};
 const STAGE_EXPLAIN={

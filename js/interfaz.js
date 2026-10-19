@@ -1,6 +1,77 @@
 /* ESTIMA · js/interfaz.js · proyecto estático sin compilación */
 function labelForMetric(id){return METRICS.find(m=>m[0]===id)?.[1]||id;}
 function fieldNum(id,value,min=0,step=1,extra=''){return `<input class="numberField" type="number" min="${min}" step="${step}" value="${esc(value)}" data-key="${esc(id)}" ${extra}>`;}
+// Vista previa y confirmación explícita: los controles 3D NO alteran el presupuesto hasta aplicar.
+const THREE_D_GROUPS=[
+ {disc:'PIP',name:'Cañerías y equipos (3D)',ids:['PIP-003','PIP-004']},
+ {disc:'CIV',name:'Fundaciones / obra civil',ids:['BIM-001']},
+ {disc:'EST',name:'Estructuras metálicas',ids:['BIM-002']},
+ {disc:'ELE',name:'Electricidad',ids:['BIM-003']},
+ {disc:'INS',name:'Instrumentación',ids:['BIM-004']},
+ {disc:'GES',name:'Revisiones, interferencias y coordinación 3D',ids:['BIM-005','BIM-006','BIM-007']}
+];
+let model3dDraft=null;
+function new3dDraft(){
+ const groups={};for(const group of THREE_D_GROUPS){
+   const existing=group.ids.some(id=>!!state.selected[id]);
+   groups[group.disc]=existing;
+ }
+ // Primera configuración parcial: solo proponer disciplinas con magnitudes de trabajo.
+ if(!Object.values(groups).some(Boolean))for(const g of THREE_D_GROUPS){
+   groups[g.disc]=!!state.disc[g.disc]&&g.ids.some(id=>BY_ID[id]&&quantityGuess(BY_ID[id])>0);
+ }
+ return {model3d:state.model3d,lod:state.lod,groups};
+}
+function get3dDraft(){return model3dDraft||(model3dDraft=new3dDraft());}
+function draft3dState(){
+ const d=get3dDraft(),s={...state,selected:{...state.selected},model3d:d.model3d,lod:d.lod};
+ for(const group of THREE_D_GROUPS){
+   const chosen=d.model3d==='integral'||(d.model3d==='parcial'&&!!d.groups[group.disc]);
+   for(const id of group.ids){if(BY_ID[id])s.selected[id]=!!chosen;}
+ }
+ // Las extracciones CAD/3D son alternativas a documentos manuales. No se cambian aquí.
+ return s;
+}
+function preview3d(){
+ const prior=calculate(),original=state;
+ let next;
+ try{state=draft3dState();next=calculate();}finally{state=original;}
+ const delta=next.total-prior.total;
+ const threeD=next.rows.filter(x=>x.r.actividad_modelado_3d);
+ const threeDHH=threeD.reduce((n,x)=>n+x.hh,0);
+ const positive=delta>=-0.00001;
+ return {prior,next,delta,threeD,threeDHH,positive};
+}
+function render3DControls(){
+ const d=get3dDraft(),p=preview3d();
+ const groupControls=THREE_D_GROUPS.filter(g=>state.disc[g.disc]).map(g=>{
+  const active=d.model3d==='integral'||(d.model3d==='parcial'&&!!d.groups[g.disc]);
+  const groupRows=p.threeD.filter(x=>g.ids.includes(x.r.id));
+  const h=groupRows.reduce((v,x)=>v+x.hh,0);
+  return `<label class="threeDChoice"><input type="checkbox" data-3d-disc="${g.disc}" ${active?'checked':''} ${d.model3d!=='parcial'?'disabled':''}><span>${esc(g.name)}</span><strong>${format(h,1)} H/H</strong></label>`;
+ }).join('');
+ const diff=p.delta;const sign=diff>0.001?'+':diff<-.001?'−':'';
+ const changed=Math.abs(diff)>0.001||d.model3d!==state.model3d||d.lod!==state.lod;
+ const ledge=(d.model3d==='ninguno'?'Se quita de la cotización la actividad geométrica 3D seleccionada por este panel.':d.model3d==='integral'?'Se incluyen todas las especialidades de modelado disponibles (según etapas y disciplinas activas).':'Marcá abajo las especialidades que realmente vas a modelar.');
+ return `<div class="threeDWork">
+  <div class="scopeNotice" style="margin:0 0 10px"><strong>Elegí el alcance, comprobá las horas y aplicá.</strong> Cambiar estos selectores por sí solo no modifica el presupuesto.</div>
+  <div class="fieldWrap"><label class="fieldLabel">TIPO DE MODELO</label><select class="selectField" data-3d-select="model3d">${Object.entries(MODEL_SCOPES).map(([k,v])=>`<option value="${k}" ${d.model3d===k?'selected':''}>${esc(v)}</option>`).join('')}</select></div>
+  <p class="hint" style="margin:5px 0 12px">${esc(ledge)}</p>
+  ${d.model3d!=='ninguno'?`<div class="fieldWrap"><label class="fieldLabel">NIVEL DE DETALLE (LOD)</label><select class="selectField" data-3d-select="lod">${[['definir','A definir'],['200','LOD 200'],['300','LOD 300'],['350','LOD 350'],['400','LOD 400']].map(([k,v])=>`<option value="${k}" ${d.lod===k?'selected':''}>${v}</option>`).join('')}</select></div>
+  <div class="threeDLodHint">${esc(LOD_GUIDE[d.lod])}<div>Factor provisional de modelado geométrico: <strong>× ${format(CALIBRATION.lodFactors[d.lod]||1,2)}</strong>. Ajustable en <b>Calibración</b>.</div></div>
+  <div class="threeDQuickApply"><div><span>Cambio previsto al aplicar</span><strong class="${p.positive?'posChange':'negChange'}">${sign}${format(Math.abs(diff),1)} H/H · ${sign}${money(Math.abs(diff*state.rate))}</strong></div><button type="button" class="button buttonPrimary" data-action="3d-apply">✓ Aplicar al presupuesto</button></div>
+  <div class="fieldLabel" style="margin-top:12px">ESPECIALIDADES DE MODELADO Y ACTIVIDADES ASOCIADAS</div><div class="threeDChoices">${groupControls||'<p class="hint">No hay disciplinas disponibles: habilitalas en la pestaña Disciplinas.</p>'}</div>`:''}
+  <div class="threeDPreview"><div class="threeDPreviewHead">VISTA PREVIA ANTES DE APLICAR</div>
+  <div class="threeDPreviewGrid"><div><span>Presupuesto actual</span><strong>${money(p.prior.budget)}</strong></div><div><span>Presupuesto propuesto</span><strong>${money(p.next.budget)}</strong></div><div class="${p.positive?'posChange':'negChange'}"><span>Cambio</span><strong>${sign}${money(Math.abs(diff*state.rate))}</strong><small>${sign}${format(Math.abs(diff),1)} H/H</small></div></div>
+  <div class="threeDTotal">H/H por actividades 3D en la propuesta: <strong>${format(p.threeDHH,1)}</strong> · ${p.threeD.length} actividades con horas</div>
+  ${!state.stages.detalle&&d.model3d!=='ninguno'?`<div class="warning">Para que los entregables 3D actuales se computen, activá la etapa <strong>Detalle</strong>. El catálogo 3D está actualmente clasificado en esa etapa; no se agregan etapas sin tu permiso.</div>`:''}
+  ${p.threeDHH===0&&d.model3d!=='ninguno'?`<div class="warning">No hay H/H 3D a sumar. Revisá las métricas del proyecto, la etapa Detalle y las disciplinas activas.</div>`:''}
+  <button class="button buttonPrimary threeDApply" data-action="3d-apply" type="button">✓ Aplicar cambios 3D al presupuesto</button><div class="threeDApplied" id="model3dApplied" role="status" aria-live="polite"></div>
+  <div class="hint">No se borran entregables manuales ni se reemplazan isométricos/MTO. Si hay solapamientos, revisalos en la Matriz. El cambio se guarda con tu proyecto.</div>
+  ${changed?'':`<div class="hint">La configuración propuesta no cambia las H/H actuales.</div>`}
+  </div></div>`;
+}
+
 function renderSidebar(){
  const stage=`<div class="scopeBlock">
   <div class="fieldWrap"><label class="fieldLabel" for="startingPoint">SITUACIÓN PREVIA · INGENIERÍA DISPONIBLE</label><select class="selectField" id="startingPoint" data-select="baseline">${Object.entries(BASELINE_LABEL).map(([k,label])=>`<option value="${k}" ${state.baseline===k?'selected':''}>${label}</option>`).join('')}</select></div>
@@ -21,14 +92,12 @@ function renderSidebar(){
  <section class="section"><div class="sectionHead">02 &nbsp; Disciplinas activas <span class="count">${DISC.filter(d=>state.disc[d.id]).length} de 9</span></div><div class="sectionBody"><div class="discGrid">${dtiles}</div><div class="hint" style="margin-top:10px">Gestión se computa por separado para no duplicar el esfuerzo técnico.</div></div></section>
  <section class="section"><div class="sectionHead">03 &nbsp; Métricas físicas <span class="count">Datos preliminares</span></div><div class="sectionBody"><div class="metricGrid">${metricFields}</div><div class="warning" style="margin-top:13px">Las reglas que predicen cantidades de planos desde m², m³ y tonelaje son <strong>supuestos de la V1</strong>, no ratios de ingeniería validados.</div></div></section>
  <section class="section"><div class="sectionHead">04 &nbsp; Tarifa y moneda</div><div class="sectionBody"><div class="inlineRow"><div><label class="fieldLabel">MONEDA</label><select class="selectField" data-select="currency"><option value="USD" ${state.currency==='USD'?'selected':''}>USD</option><option value="ARS" ${state.currency==='ARS'?'selected':''}>ARS</option></select></div><div><label class="fieldLabel">TARIFA POR H/H</label>${fieldNum('rate',state.rate,0,'any')}</div></div><div class="hint" style="margin-top:10px">Tarifa única para todos los perfiles. Cambiar moneda no convierte automáticamente la tarifa. Sin margen, impuestos ni materiales.</div></div></section>
- <section class="section"><div class="sectionHead">05 &nbsp; Modelado 3D y revisiones</div><div class="sectionBody">
-  <div class="fieldWrap"><label class="fieldLabel">ALCANCE DE MODELADO 3D</label><select class="selectField" data-select="model3d">${Object.entries(MODEL_SCOPES).map(([k,v])=>`<option value="${k}" ${state.model3d===k?'selected':''}>${v}</option>`).join('')}</select></div>
-  ${state.model3d!=='ninguno'?`<div class="fieldWrap"><label class="fieldLabel">NIVEL DE DESARROLLO LOD (acordar con cliente)</label><select class="selectField" data-select="lod">${[['definir','A definir'],['200','LOD 200'],['300','LOD 300'],['350','LOD 350'],['400','LOD 400']].map(([k,v])=>`<option value="${k}" ${state.lod===k?'selected':''}>${v}</option>`).join('')}</select></div><button class="button" data-action="activar-3d" type="button">+ Agregar entregables 3D (sin quitar los existentes)</button>`:''}
-  <div class="hint" style="margin:9px 0">Modelado de cañerías, equipos, civil, estructuras, electricidad e instrumentos. Las revisiones 30%, 60% y 90% y los reportes de interferencias son actividades seleccionables. CAI no fija H/H para estas tareas.</div>
-  <div class="scopeNotice">La selección del tipo de modelo 3D habilita actividades. El botón «Agregar entregables 3D» SUMA trabajos: no elimina entregables manuales ni 2D. Si ya están seleccionados isométricos/MTO manuales, no se sugieren sus alternativas de extracción automática; podés elegirlas por separado en la matriz. Evitá duplicar cantidades cuando ambos métodos correspondan a las mismas líneas. El LOD no modifica las H/H automáticamente hasta calibrar sus ratios.</div>
-  <div class="fieldWrap" style="margin-top:12px"><label class="fieldLabel">RONDAS ADICIONALES DE COMENTARIOS DEL CLIENTE</label>${fieldNum('clientRounds',state.clientRounds,0,1,'max="10"')}</div>
-  <div class="fieldWrap"><label class="fieldLabel">FACTOR H/H ADICIONAL POR RONDA (sobre horas base)</label>${fieldNum('roundFactor',state.roundFactor,0,0.01,'max="2"')}</div>
-  <div class="hint">Valor inicial sugerido: 0,12 por ronda. La primera revisión interna ya está incluida en las H/H originales; las rondas adicionales se agregan por separado. No sumar GES-004 por el mismo concepto.</div>
+ <section class="section"><div class="sectionHead">05 &nbsp; Modelado 3D · presupuestar</div><div class="sectionBody">
+  ${render3DControls()}
+  <div class="fieldWrap" style="margin-top:14px"><label class="fieldLabel">RONDAS ADICIONALES DE COMENTARIOS DEL CLIENTE</label>${fieldNum('clientRounds',state.clientRounds,0,1,'max="10"')}</div>
+  <div class="fieldWrap"><label class="fieldLabel">FACTOR H/H ADICIONAL POR RONDA</label>${fieldNum('roundFactor',state.roundFactor,0,0.01,'max="2"')}</div>
+  <div class="hint">Son rondas externas adicionales. Ejemplo: 1 ronda × 0,12 = 12% adicional sobre trabajos directos elegibles. La revisión interna estándar ya está incluida.</div>
+  <div class="buttons" style="margin-top:10px"><button type="button" class="button" data-action="open-guide">ⓘ Guía de todos los campos</button></div>
  </div></section>
  <section class="section"><div class="sectionHead">06 &nbsp; Archivos y exportación</div><div class="sectionBody"><div class="buttons"><button class="button buttonPrimary" type="button" data-action="print">⎙ &nbsp; Imprimir propuesta</button><button class="button" type="button" data-action="csv">↓ &nbsp; CSV</button><button class="button buttonSoft" type="button" data-action="save">↓ &nbsp; Guardar JSON</button><button class="button" type="button" data-action="load">↑ &nbsp; Abrir JSON</button><button class="button" type="button" data-action="reset">↺ &nbsp; Restablecer</button></div><input id="loadJsonFile" type="file" accept="application/json,.json" style="display:none"><div class="hint" style="margin-top:10px">El proyecto se guarda también en este navegador, cuando el almacenamiento local está disponible.</div></div></section>`;
 }
@@ -40,7 +109,7 @@ function ratioRow(r,resultById){const activeNow=active(r),eligible=state.disc[r.
  const qHTML=r.metodo==='quantity'?(isDetail?`<input class="numEdit" type="number" min="0" step="any" value="${esc(q)}" data-key="qty:${r.id}" aria-label="Cantidad para ${esc(r.entregable)}"><span class="subCell">${o.quantity!==undefined?'manual':'supuesto'}</span>`:`<span class="numRead">${format(q,2)}</span><span class="subCell">supuesto</span>`):`<span class="numRead">${activeNow?format(q,2):'—'}</span><span class="subCell">base H/H</span>`;
  const rateHTML=isDetail?`<input class="numEdit small" type="number" min="0" step="any" value="${esc(o.rate??original)}" data-key="unit:${r.id}" aria-label="Horas unitarias para ${esc(r.entregable)}">`:`<span class="numRead">${format(o.rate??original,2)}</span>`;
  const factorHTML=isDetail?`<div style="display:flex;gap:5px;justify-content:flex-end"><input class="numEdit small" type="number" min="0" max="20" step="0.05" value="${esc(o.complexity??1)}" data-key="fc:${r.id}" title="Factor complejidad" aria-label="Complejidad ${esc(r.entregable)}"><input class="numEdit small" type="number" min="0" max="20" step="0.05" value="${esc(o.repetition??1)}" data-key="fr:${r.id}" title="Factor repetición" aria-label="Repetición ${esc(r.entregable)}"></div>`:`<span class="numRead">${format(o.complexity??1,2)} / ${format(o.repetition??1,2)}</span>`;
- return `<tr class="${!activeNow?'deselected':''}"><td style="width:34px;text-align:center"><input class="delCheck" type="checkbox" data-check="selected" data-id="${r.id}" ${state.selected[r.id]?'checked':''} ${!eligible?'disabled':''} aria-label="Incluir ${esc(r.entregable)}"></td><td class="labelCell"><div class="delName">${esc(r.entregable)}</div>${deliverableDetails(r)}<div class="delDescription">${r.id} · <span class="tinyBadge stage">${STAGE_LABEL[r.etapa]}</span> · ${esc(r.unidad)}</div></td><td style="text-align:right">${qHTML}</td><td style="text-align:right">${rateHTML}</td><td style="text-align:right">${factorHTML}</td><td class="cellNumber">${format(valHH,1)}${activeNow&&computed?.revisionExtra?`<span class="subCell">+ ${format(computed.revisionExtra,1)} rev.</span>`:""}</td><td class="sourceCell">${sourceLabel(r)}${scopeReference(r)}</td></tr>`;
+ return `<tr class="${!activeNow?'deselected':''}"><td style="width:34px;text-align:center"><input class="delCheck" type="checkbox" data-check="selected" data-id="${r.id}" ${state.selected[r.id]?'checked':''} ${!eligible?'disabled':''} aria-label="Incluir ${esc(r.entregable)}"></td><td class="labelCell"><div class="delName">${esc(r.entregable)}</div>${deliverableDetails(r)}<div class="delDescription">${r.id} · <span class="tinyBadge stage">${STAGE_LABEL[r.etapa]}</span> · ${esc(r.unidad)}</div></td><td style="text-align:right">${qHTML}</td><td style="text-align:right">${rateHTML}</td><td style="text-align:right">${factorHTML}</td><td class="cellNumber">${format(valHH,1)}${activeNow&&computed?.lodFactor!==1?`<span class="subCell">LOD ×${format(computed.lodFactor,2)}</span>`:''}${activeNow&&computed?.revisionExtra?`<span class="subCell">+ ${format(computed.revisionExtra,1)} rev.</span>`:""}</td><td class="sourceCell">${sourceLabel(r)}${scopeReference(r)}</td></tr>`;
 }
 function renderMatrix(result){const byId=Object.fromEntries(result.rows.map(x=>[x.r.id,x]));const term=(state.filter||'').trim().toLowerCase();const parts=[];
  for(const d of DISC){if(!state.disc[d.id])continue;const all=RATIOS.filter(r=>r.disciplina===d.id&&stageEligible(r)&&modelEligible(r));const filtered=all.filter(r=>(!state.onlySelected||state.selected[r.id])&&(!term||(`${r.entregable} ${r.id} ${r.unidad}`).toLowerCase().includes(term)));
@@ -83,16 +152,76 @@ function renderCalibration(res){
  <div class="calHeadline">02 · Conversión física → cantidad de entregables</div>
  <p class="hint">Estos parámetros controlan cuántos documentos se proponen en modo rápido. Por ejemplo, un valor menor de m³ por plano de fundación suele generar más planos y H/H; sus efectos son escalonados por el redondeo hacia arriba.</p>
  <div class="calDriverGrid">${qtyDrivers}</div>
- <div class="calHeadline">03 · Ratios H/H unitarias generales</div>
+ <div class="calHeadline">03 · Factores LOD de modelado 3D</div>
+ <p class="hint">Ajustan únicamente las horas de geometría 3D (modelado de equipos, cañerías, estructuras y otras disciplinas). NO multiplican las reuniones ni la extracción de isométricos/MTO. <b>Son hipótesis de partida, no valores oficiales CAI/BIM.</b> Se guardan automáticamente como calibración global.</p>
+ <div class="calDriverGrid">${Object.entries(LOD_DEFAULTS).map(([id,base])=>`<div class="calDriver"><label class="fieldLabel">LOD ${id==='definir'?'sin definir':id}</label><small class="calHelp">${esc(LOD_GUIDE[id])}</small><div class="calDriverBody"><span>×</span><input type="number" class="numberField" min="0.1" max="3" step="0.05" data-key="callod:${id}" value="${esc(CALIBRATION.lodFactors[id])}" aria-label="Factor de escala LOD ${id}"></div></div>`).join('')}</div>
+ <div class="calHeadline">04 · Ratios H/H unitarias generales</div>
  <p class="hint">${rateCount} ratios guardados como valores generales. Para afinarlos, editá las H/H unitarias en <b>Modo detallado → Matriz</b> y luego hacé clic en “Usar las H/H de la matriz como valores generales”. Las cantidades y otros factores seguirán siendo específicos del proyecto.</p>
  <div class="buttons"><button class="button buttonPrimary" data-action="cal-publish-rates">↗ Usar H/H de matriz como valores generales</button><button class="button" data-action="cal-export">↓ Descargar calibración definitiva</button><button class="button" data-action="cal-import">↑ Importar calibración</button><button class="button buttonSoft" data-action="cal-reset">↺ Restaurar versión publicada</button></div>
  <input id="loadCalFile" type="file" accept=".json,application/json" style="display:none">
  <div class="scopeNotice">Guardar en GitHub: entrar a <code>data/calibracion.json</code> → editar o subir reemplazo → confirmar cambios. Los valores publicados se usan en otros navegadores; los ajustes locales existentes tienen prioridad hasta que se restauren.</div>
  </div></section>`;
 }
+const METRIC_HELP={
+ area:'Superficie de galpones, naves o edificios a proyectar. No es automáticamente superficie de terreno.',
+ concrete:'Volumen estimado de hormigón de fundaciones y obras civiles. No incluye la mano de obra para hormigonar.',
+ steel:'Peso total estimado de estructuras metálicas (no el peso de máquinas).',
+ equipment:'Cantidad de equipos principales distintos o unidades a integrar en el diseño.',
+ mass:'Peso total de equipos en toneladas. Separarlo del tonelaje estructural.',
+ lines:'Cantidad de líneas de piping, preferentemente obtenida o estimada desde un listado de líneas.',
+ pid:'Número de hojas/diagramas P&ID previstos; no es el número de cañerías.',
+ power:'Potencia eléctrica instalada aproximada (kW), no energía mensual consumida (kWh).',
+ boards:'Cantidad de tableros eléctricos, MCC y tableros principales dentro del alcance.',
+ circuits:'Cantidad de alimentadores o circuitos eléctricos que hay que diseñar.',
+ instruments:'Cantidad de instrumentos y válvulas instrumentadas que requieren ingeniería.',
+ loops:'Cantidad de lazos de control a documentar. Un lazo puede involucrar varios instrumentos.',
+ io:'Cantidad total de señales de entrada/salida que se conectan al sistema de control.'
+};
+function renderFieldGuide(){
+ const metrics=METRICS.map(([id,label,unit])=>`<tr><td><b>${esc(label)}</b><small class="helpCode">${esc(unit)}</small></td><td>${esc(METRIC_HELP[id])}</td><td>${format(state.metrics[id]||0,2)}</td></tr>`).join('');
+ const guidance=[
+ ['Tipo de proyecto','Carga una propuesta inicial de disciplinas y magnitudes. Son ejemplos; revisá los datos antes de cotizar.'],
+ ['Ingeniería disponible','Indicá qué documentación fue desarrollada, aprobada y realmente puede reutilizarse.'],
+ ['Objetivo de la propuesta','Sugiere automáticamente qué etapas cotizar hasta llegar al nivel pedido.'],
+ ['Etapas independientes','Podés activar Conceptual, Básica y Detalle por separado. La sugerencia automática no obliga a incluir las anteriores.'],
+ ['Básica extendida','Profundiza la etapa Básica para definir mejor alcance, compras y cómputos de inversión.'],
+ ['Disciplinas','Solo suman documentos de las especialidades marcadas. Gestión incluye coordinación y tareas indirectas.'],
+ ['Tarifa H/H y moneda','Todos los perfiles utilizan la misma tarifa promedio. Cambiar USD a ARS NO convierte automáticamente el importe.'],
+ ['Modo rápido','Calcula cantidades de entregables a partir de magnitudes usando hipótesis editables.'],
+ ['Modo detallado','Permite editar manualmente cantidades, H/H por unidad, complejidad y repetición de cada entregable.'],
+ ['Cantidad','Número de unidades del trabajo: planos, memorias, equipos, líneas, documentos o paquetes.'],
+ ['H/H unitarias','Horas requeridas por unidad, antes de multiplicadores. Algunas son referencias de alcance limitado y otras hipótesis.'],
+ ['Fc (complejidad)','Multiplicador del esfuerzo: 1,00 = normal; 1,25 = +25% de horas; 0,80 = −20%.'],
+ ['Fr (repetición)','Multiplicador por reutilización: 1,00 = sin ahorro; 0,75 = −25%. Requiere elementos repetibles.'],
+ ['Rondas de cliente','Número de tandas extra de comentarios externos. No duplicar revisiones ya consideradas en las H/H.'],
+ ['Factor por ronda','0,12 significa un 12% adicional por ronda sobre las horas base de las actividades elegibles.'],
+ ['Aportes por m², m³, t, etc.','Son COMPLEMENTOS adicionales a las H/H de documentos; por defecto valen 0 para no sumar dos veces.'],
+ ['Conversión física a documentos','Ejemplo: 100 m³/planos con 200 m³ de hormigón predice 2 planos. Los coeficientes son hipótesis.'],
+ ['% del total','Porción de las H/H globales aportadas por un factor, no participación total de toda la disciplina.'],
+ ['Calibración definitiva','Los ajustes locales se guardan en tu navegador. Descargá calibracion.json y subilo a GitHub para publicar valores base.']
+ ];
+ return `<section class="section"><div class="sectionHead">GUÍA · ¿Qué significa cada dato y cómo completarlo?</div><div class="sectionBody">
+ <div class="scopeNotice"><b>Orden recomendado:</b> 1. Elegir proyecto → 2. Marcar etapas y disciplinas → 3. Cargar magnitudes → 4. Definir 3D y aplicar → 5. Revisar matriz → 6. Calibrar → 7. Exportar.</div>
+ <div class="helpIntro">Podés dejar una magnitud en <strong>0</strong> cuando no aplica. Si todavía no la conocés, anotá en la descripción del alcance que es una hipótesis pendiente de confirmar. Los importes cotizados son por trabajo de <b>ingeniería</b>, no por construcción ni fabricación.</div>
+ <div class="calHeadline">01 · Campos de proyecto, cálculo y presupuesto</div>
+ <div class="helpList">${guidance.map(([name,what])=>`<div class="helpItem"><strong>${esc(name)}</strong><p>${esc(what)}</p></div>`).join('')}</div>
+ <div class="calHeadline">02 · Cada magnitud física</div>
+ <div class="tableWrap"><table class="estTable helpTable"><thead><tr><th>Campo</th><th>Qué tenés que introducir</th><th>Valor actual</th></tr></thead><tbody>${metrics}</tbody></table></div>
+ <div class="calHeadline">03 · Modelado 3D y LOD, con efecto en el presupuesto</div>
+ <div class="helpList"><div class="helpItem"><strong>Sin modelo 3D</strong><p>No se contratan tareas de modelado geométrico 3D. Al aplicar, se quitan del total las actividades 3D administradas por el panel.</p></div>
+ <div class="helpItem"><strong>Modelo parcial</strong><p>Elegís exactamente cuáles disciplinas se modelan: cañerías/equipos, civil, estructuras, electricidad, instrumentación y/o coordinación.</p></div>
+ <div class="helpItem"><strong>Modelo multidisciplinario</strong><p>Se cotizan las especialidades activas con trabajo 3D asociado y las actividades de coordinación, siempre que existan cantidades y etapa habilitada.</p></div>
+ <div class="helpItem"><strong>Aplicar cambios</strong><p>Los selectores preparan una simulación, no modifican el precio. El botón Aplicar cambios 3D confirma la selección; verás horas e importe antes de hacerlo.</p></div>
+ <div class="helpItem"><strong>Cómo se calculan las horas 3D</strong><p>Cantidad × H/H unitarias × Fc × Fr × factor LOD para geometría. Los factores LOD son hipótesis editables en Calibración, no porcentajes certificados.</p></div></div>
+ <div class="tableWrap"><table class="estTable helpTable"><thead><tr><th>LOD</th><th>Alcance orientativo</th><th>Factor propuesto</th></tr></thead><tbody>${Object.keys(LOD_DEFAULTS).map(id=>`<tr><td>${id==='definir'?'A definir':id}</td><td>${esc(LOD_GUIDE[id])}</td><td>×${format(CALIBRATION.lodFactors[id],2)}</td></tr>`).join('')}</tbody></table></div>
+ <div class="warning">El LOD se debe especificar contractualmente por elemento y disciplina. Los factores propuestos son una ayuda inicial para presupuestar, NO una tabla publicada por CAI ni por BIM Forum.</div>
+ <div class="calHeadline">04 · Cómo comprobar el resultado</div>
+ <p class="hint">La Matriz muestra qué documentos están incluidos, las cantidades y sus H/H. Las columnas Fc/Fr afectan las horas de cada fila. El resumen distribuye las H/H por disciplina y perfil. Antes de emitir, revisá las advertencias de <b>Control de alcance</b> para detectar solapamientos de trabajo manual/3D.</p>
+ </div></section>`;
+}
 let activeSBTab='proyecto',activeResultTab='resumen';
-const SB_KEYS=['proyecto','disciplinas','metricas','costos'];
-const RESULT_KEYS=['resumen','entregables','calibracion','calidad','base'];
+const SB_KEYS=['proyecto','disciplinas','metricas','modelado','costos'];
+const RESULT_KEYS=['resumen','entregables','calibracion','guia','calidad','base'];
 function setAppTab(which,key){
  const isSB=which==='sb';const keys=isSB?SB_KEYS:RESULT_KEYS;
  if(!keys.includes(key))return;
@@ -115,11 +244,11 @@ function renderInsights(result){
 function enhanceInterface(result){
  const side=document.getElementById('sidebar'),sects=[...side.children].filter(x=>x.classList.contains('section'));
  const sbnav=document.createElement('nav');sbnav.className='panelTabs';sbnav.setAttribute('aria-label','Configuración');
- for(const [id,txt] of [['proyecto','Proyecto'],['disciplinas','Disciplinas'],['metricas','Métricas'],['costos','Tarifa']]){
+ for(const [id,txt] of [['proyecto','Proyecto'],['disciplinas','Disciplinas'],['metricas','Métricas'],['modelado','Modelo 3D'],['costos','Tarifa']]){
   const b=document.createElement('button');b.type='button';b.className='panelTab';b.textContent=txt;b.dataset.tab=id;b.setAttribute('role','tab');b.onclick=()=>setAppTab('sb',id);sbnav.appendChild(b);
  }
  const panes={};for(const id of SB_KEYS){const c=document.createElement('div');c.className='sbPane';c.dataset.tab=id;panes[id]=c;}
- const destination=['proyecto','disciplinas','metricas','costos','costos','costos'];sects.forEach((s,i)=>panes[destination[i]].appendChild(s));
+ const destination=['proyecto','disciplinas','metricas','costos','modelado','costos'];sects.forEach((s,i)=>panes[destination[i]].appendChild(s));
  side.replaceChildren(sbnav,...Object.values(panes));
  const dash=document.getElementById('dashboard');const elements=[...dash.children];
  const mode=elements.find(x=>x.classList.contains('section'));
@@ -130,11 +259,11 @@ function enhanceInterface(result){
  if(!mode||!kpis||!two||sections.length!==4)return;
  mode.classList.add('modeSection');
  const resnav=document.createElement('nav');resnav.className='resultTabs';resnav.setAttribute('aria-label','Secciones de resultados');
- for(const [id,txt] of [['resumen','Resumen'],['entregables','Matriz de entregables'],['calibracion','Calibración'],['calidad','Control de alcance'],['base','Metodología']]){
+ for(const [id,txt] of [['resumen','Resumen'],['entregables','Matriz de entregables'],['calibracion','Calibración'],['guia','Guía de campos'],['calidad','Control de alcance'],['base','Metodología']]){
   const b=document.createElement('button');b.type='button';b.className='resultTab';b.dataset.tab=id;b.setAttribute('role','tab');b.textContent=txt;b.onclick=()=>setAppTab('result',id);resnav.appendChild(b);
  }
  const resPanes={};for(const id of RESULT_KEYS){const c=document.createElement('div');c.className='resultPane';c.dataset.tab=id;resPanes[id]=c;}
- if(mini)resPanes.resumen.appendChild(mini);resPanes.resumen.appendChild(two);const extras=document.createElement('div');extras.innerHTML=renderInsights(result);resPanes.resumen.appendChild(extras);resPanes.calidad.appendChild(sections[1]);resPanes.entregables.appendChild(sections[2]);const calHost=document.createElement('div');calHost.innerHTML=renderCalibration(result);resPanes.calibracion.appendChild(calHost);resPanes.base.appendChild(sections[3]);
+ if(mini)resPanes.resumen.appendChild(mini);resPanes.resumen.appendChild(two);const extras=document.createElement('div');extras.innerHTML=renderInsights(result);resPanes.resumen.appendChild(extras);resPanes.calidad.appendChild(sections[1]);resPanes.entregables.appendChild(sections[2]);const calHost=document.createElement('div');calHost.innerHTML=renderCalibration(result);resPanes.calibracion.appendChild(calHost);const helpHost=document.createElement('div');helpHost.innerHTML=renderFieldGuide();resPanes.guia.appendChild(helpHost);resPanes.base.appendChild(sections[3]);
  dash.replaceChildren(mode,kpis,resnav,...Object.values(resPanes));
  setAppTab('sb',activeSBTab);setAppTab('result',activeResultTab);
 }
@@ -151,5 +280,5 @@ function setOverride(id,key,value){const obj=state.overrides[id]||{};obj[key]=sa
 // Cuando dos métodos son alternativos (p. ej. isométricos manuales y extraídos del
 // modelo 3D), se muestran advertencias; el usuario define explícitamente cantidades.
 function toggleSelected(id,val){state.selected[id]=Boolean(val);}
-function updateKey(key,value){if(key==='project')state.project=value;if(key==='description')state.description=value;if(key==='filter')state.filter=value;if(key==='rate')state.rate=safeNum(value,0,0,1e9);if(key.startsWith('calphys:')){CALIBRATION.physicalHH[key.slice(8)]=safeNum(value,0,0,1e5);persistCalibration();}if(key.startsWith('caldriver:')){const id=key.slice(10);CALIBRATION.quantityDrivers[id]=safeNum(value,1,0.01,1e9);persistCalibration();}if(key==='clientRounds')state.clientRounds=safeNum(value,0,0,10);if(key==='roundFactor')state.roundFactor=safeNum(value,0,0,2);if(key.startsWith('metric:'))state.metrics[key.split(':')[1]]=safeNum(value,0);if(key.startsWith('qty:'))setOverride(key.slice(4),'quantity',value);if(key.startsWith('unit:'))setOverride(key.slice(5),'rate',value);if(key.startsWith('fc:'))setOverride(key.slice(3),'complexity',value);if(key.startsWith('fr:'))setOverride(key.slice(3),'repetition',value);}
+function updateKey(key,value){if(key==='project')state.project=value;if(key==='description')state.description=value;if(key==='filter')state.filter=value;if(key==='rate')state.rate=safeNum(value,0,0,1e9);if(key.startsWith('calphys:')){CALIBRATION.physicalHH[key.slice(8)]=safeNum(value,0,0,1e5);persistCalibration();}if(key.startsWith('caldriver:')){const id=key.slice(10);CALIBRATION.quantityDrivers[id]=safeNum(value,1,0.01,1e9);persistCalibration();}if(key.startsWith('callod:')){const id=key.slice(7);if(Object.hasOwn(LOD_DEFAULTS,id))CALIBRATION.lodFactors[id]=safeNum(value,LOD_DEFAULTS[id],0.1,3);persistCalibration();}if(key==='clientRounds')state.clientRounds=safeNum(value,0,0,10);if(key==='roundFactor')state.roundFactor=safeNum(value,0,0,2);if(key.startsWith('metric:'))state.metrics[key.split(':')[1]]=safeNum(value,0);if(key.startsWith('qty:'))setOverride(key.slice(4),'quantity',value);if(key.startsWith('unit:'))setOverride(key.slice(5),'rate',value);if(key.startsWith('fc:'))setOverride(key.slice(3),'complexity',value);if(key.startsWith('fr:'))setOverride(key.slice(3),'repetition',value);}
 function visibleRatios(){const term=(state.filter||'').trim().toLowerCase();return RATIOS.filter(r=>state.disc[r.disciplina]&&stageEligible(r)&&modelEligible(r)&&(!state.onlySelected||state.selected[r.id])&&(!term||`${r.entregable} ${r.id} ${r.unidad}`.toLowerCase().includes(term)));}
