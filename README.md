@@ -1,4 +1,4 @@
-# ESTIMA — Calculadora paramétrica de ingeniería
+# ESTIMA V4.3 — Calculadora paramétrica de ingeniería
 
 Calculadora de esfuerzo de ingeniería multidisciplinaria por actividad, etapa, disciplina y perfil. Sitio **estático**, compatible con **GitHub Pages** y sin servidor de backend.
 
@@ -83,3 +83,28 @@ Luego abrir <http://localhost:8000/>. Con VS Code también sirve **Live Server**
 ## Licencias y fuentes
 
 Las notas y referencias bibliográficas de cada actividad están incluidas en `data/biblioteca_ratios.json` y en el panel de metodología. Esta biblioteca es un borrador de trabajo, no una norma AACE ni una base de productividad certificada.
+
+
+## Corrección V4.1 — Agregar modelado 3D sin descontar horas
+
+- Los botones de selección de entregables ya no desmarcan silenciosamente alternativas.
+- «Agregar entregables 3D» incorpora tareas 3D adicionales y respeta todos los trabajos ya seleccionados.
+- Si hay isométricos o MTO manuales seleccionados, el botón no activa automáticamente el método alternativo derivado del modelo. El usuario puede activarlo manualmente cuando tenga sentido y ajustar sus cantidades.
+- Cuando ambas rutas manual/3D están activas, el cálculo advierte del posible doble cómputo.
+- No se modifican ratios, precios por H/H ni coeficientes financieros.
+- Se incluyen verificaciones automáticas de regresión en `tests/verificar_calculos.js`.
+
+**Actualización GitHub Pages:** subir todas las carpetas del ZIP nuevo a la raíz de la rama `main`, reemplazando los archivos anteriores; no arrastrar la carpeta contenedora. La actualización conserva los proyectos guardados en el navegador.
+
+
+## V4.3 — Calibración y persistencia de parámetros
+
+- Nueva pestaña **Calibración** con coeficientes de H/H *complementarias* por magnitud física y porcentaje visible de las horas totales.
+- Todos los coeficientes físicos comienzan en **cero** para evitar contar dos veces los trabajos asociados a planos y cálculos. Si se activan se muestran como filas independientes `FIS-*` y se advierte del posible solapamiento.
+- Nueve coeficientes que convierten magnitudes físicas en cantidades de documentos (`m³ por plano de fundación`, `t por plano estructural`, etc.) son ahora editables y afectan el modo rápido. No son ratios normalizados.
+- Se pueden promover los ratios H/H editados en **Modo detallado → Matriz** a valores generales de la calculadora.
+- Los ajustes de calibración se guardan automáticamente en `localStorage` bajo una clave separada de los proyectos. Esto **no modifica** archivos del servidor y solo persiste en ese navegador.
+- Con **Descargar calibración definitiva** se genera `calibracion.json`. Para establecer los valores como predeterminados para todos los usuarios, reemplazar **`data/calibracion.json`** en GitHub. La aplicación carga ese archivo al inicio; después aplica los ajustes locales existentes, si los hay.
+- Se pueden importar calibraciones, restaurar valores publicados y guardar proyectos de modo independiente.
+
+**IMPORTANTE:** GitHub Pages es estático; no permite que los usuarios reescriban el HTML desde el navegador. Si querés un repositorio con nuevas calibraciones para todos, hay que subir `data/calibracion.json` mediante un commit. Solo las modificaciones dentro de `data/calibracion.json` viajan con la web publicada; los proyectos quedan en el navegador o su propio JSON.

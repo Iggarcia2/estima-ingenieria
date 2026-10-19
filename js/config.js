@@ -4,6 +4,42 @@ let LIB;
 let RATIOS;
 let BY_ID;
 const STORAGE_KEY = 'estimador_ingenieria_v4_estado';
+const CALIBRATION_KEY='estimador_ingenieria_calibracion_v1';
+let CALIBRATION; // Calibración global persistente, INDEPENDIENTE del proyecto
+let PUBLISHED_CALIBRATION; // Valores base que llegaron desde data/calibracion.json
+const PHYSICAL_DRIVERS=[
+ {id:'area',label:'Nave / galpón',unit:'m²',disc:'CIV',hint:'Complemento de ingeniería civil asociado a la superficie. No incluye automáticamente entregables.'},
+ {id:'concrete',label:'Hormigón / fundaciones',unit:'m³',disc:'CIV',hint:'Complemento de ingeniería de fundaciones por m³; evitar solapar memorias y planos de fundación.'},
+ {id:'steel',label:'Estructuras metálicas',unit:'t',disc:'EST',hint:'Complemento de diseño estructural por tonelada; no es H/H de fabricación o montaje.'},
+ {id:'mass',label:'Peso de equipos',unit:'t',disc:'MEC',hint:'Complemento por complejidad mecánica ligada al peso de equipos; no es ingeniería de todos los equipos por defecto.'},
+ {id:'lines',label:'Líneas de cañerías',unit:'línea',disc:'PIP',hint:'Complemento por línea, distinto de planos e isométricos ya incluidos.'},
+ {id:'power',label:'Potencia eléctrica',unit:'kW',disc:'ELE',hint:'Complemento de esfuerzo eléctrico por potencia; contrastar con planos, cargas y tableros.'}
+];
+const QUANTITY_DRIVERS=[
+ {id:'m2_por_plano_civil',label:'m² de nave por plano civil',unit:'m²/plano',default:1500},
+ {id:'m3_por_tipo_fundacion',label:'m³ por tipo de fundación',unit:'m³/tipo',default:80},
+ {id:'m3_por_plano_fundacion',label:'m³ por plano de fundaciones',unit:'m³/plano',default:130},
+ {id:'m3_por_plano_armadura',label:'m³ por plano de armaduras',unit:'m³/plano',default:200},
+ {id:'t_por_plano_estructural',label:'Toneladas por plano estructural',unit:'t/plano',default:12},
+ {id:'t_por_tipo_union',label:'Toneladas por tipo de unión',unit:'t/tipo',default:20},
+ {id:'t_por_plano_uniones',label:'Toneladas por plano de uniones',unit:'t/plano',default:15},
+ {id:'t_por_plano_taller',label:'Toneladas por plano de taller',unit:'t/plano',default:5},
+ {id:'equipos_por_especificacion',label:'Equipos por especificación mecánica',unit:'equipo/doc.',default:5}
+];
+function defaultCalibration(){return {schema:'estima_calibracion_v1',version:'4.3',physicalHH:Object.fromEntries(PHYSICAL_DRIVERS.map(x=>[x.id,0])),quantityDrivers:Object.fromEntries(QUANTITY_DRIVERS.map(x=>[x.id,x.default])),rateOverrides:{}};}
+function mergeCalibration(value){
+ const base=defaultCalibration(); if(!value||value.schema!=='estima_calibracion_v1')return base;
+ for(const x of PHYSICAL_DRIVERS)base.physicalHH[x.id]=safeNum(value.physicalHH?.[x.id],0,0,1e5);
+ for(const x of QUANTITY_DRIVERS)base.quantityDrivers[x.id]=safeNum(value.quantityDrivers?.[x.id],x.default,0.01,1e9);
+ if(value.rateOverrides&&typeof value.rateOverrides==='object')for(const [id,v] of Object.entries(value.rateOverrides)){
+  if(typeof id==='string'&&id.length<100&&Number.isFinite(Number(v)))base.rateOverrides[id]=safeNum(v,0,0,1e6);
+ }
+ return base;
+}
+function persistCalibration(){try{localStorage.setItem(CALIBRATION_KEY,JSON.stringify(CALIBRATION));return true;}catch(e){console.warn('Sin guardado local de calibración',e);return false;}}
+function calibrationDriver(id,fallback){return safeNum(CALIBRATION?.quantityDrivers?.[id],fallback,0.01,1e9);}
+function effectiveRate(r){return safeNum(CALIBRATION?.rateOverrides?.[r.id],r.hh_unitarias,0,1e6);}
+
 const DISC = [
  {id:'PRO',name:'Procesos',short:'Procesos',color:'#467ca9'},
  {id:'CIV',name:'Civil y arquitectura',short:'Civil',color:'#628da8'},

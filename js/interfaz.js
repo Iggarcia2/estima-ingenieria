@@ -23,9 +23,9 @@ function renderSidebar(){
  <section class="section"><div class="sectionHead">04 &nbsp; Tarifa y moneda</div><div class="sectionBody"><div class="inlineRow"><div><label class="fieldLabel">MONEDA</label><select class="selectField" data-select="currency"><option value="USD" ${state.currency==='USD'?'selected':''}>USD</option><option value="ARS" ${state.currency==='ARS'?'selected':''}>ARS</option></select></div><div><label class="fieldLabel">TARIFA POR H/H</label>${fieldNum('rate',state.rate,0,'any')}</div></div><div class="hint" style="margin-top:10px">Tarifa única para todos los perfiles. Cambiar moneda no convierte automáticamente la tarifa. Sin margen, impuestos ni materiales.</div></div></section>
  <section class="section"><div class="sectionHead">05 &nbsp; Modelado 3D y revisiones</div><div class="sectionBody">
   <div class="fieldWrap"><label class="fieldLabel">ALCANCE DE MODELADO 3D</label><select class="selectField" data-select="model3d">${Object.entries(MODEL_SCOPES).map(([k,v])=>`<option value="${k}" ${state.model3d===k?'selected':''}>${v}</option>`).join('')}</select></div>
-  ${state.model3d!=='ninguno'?`<div class="fieldWrap"><label class="fieldLabel">NIVEL DE DESARROLLO LOD (acordar con cliente)</label><select class="selectField" data-select="lod">${[['definir','A definir'],['200','LOD 200'],['300','LOD 300'],['350','LOD 350'],['400','LOD 400']].map(([k,v])=>`<option value="${k}" ${state.lod===k?'selected':''}>${v}</option>`).join('')}</select></div><button class="button" data-action="activar-3d" type="button">✓ Sugerir entregables de modelado 3D</button>`:''}
+  ${state.model3d!=='ninguno'?`<div class="fieldWrap"><label class="fieldLabel">NIVEL DE DESARROLLO LOD (acordar con cliente)</label><select class="selectField" data-select="lod">${[['definir','A definir'],['200','LOD 200'],['300','LOD 300'],['350','LOD 350'],['400','LOD 400']].map(([k,v])=>`<option value="${k}" ${state.lod===k?'selected':''}>${v}</option>`).join('')}</select></div><button class="button" data-action="activar-3d" type="button">+ Agregar entregables 3D (sin quitar los existentes)</button>`:''}
   <div class="hint" style="margin:9px 0">Modelado de cañerías, equipos, civil, estructuras, electricidad e instrumentos. Las revisiones 30%, 60% y 90% y los reportes de interferencias son actividades seleccionables. CAI no fija H/H para estas tareas.</div>
-  <div class="scopeNotice">La selección 3D no activa automáticamente nuevos costos; elegí los entregables en la matriz o usá «Sugerir». Modelos 2D/3D pueden solaparse. La selección de LOD es documental: no cambia las H/H automáticamente hasta contar con ratios LOD validados.</div>
+  <div class="scopeNotice">La selección del tipo de modelo 3D habilita actividades. El botón «Agregar entregables 3D» SUMA trabajos: no elimina entregables manuales ni 2D. Si ya están seleccionados isométricos/MTO manuales, no se sugieren sus alternativas de extracción automática; podés elegirlas por separado en la matriz. Evitá duplicar cantidades cuando ambos métodos correspondan a las mismas líneas. El LOD no modifica las H/H automáticamente hasta calibrar sus ratios.</div>
   <div class="fieldWrap" style="margin-top:12px"><label class="fieldLabel">RONDAS ADICIONALES DE COMENTARIOS DEL CLIENTE</label>${fieldNum('clientRounds',state.clientRounds,0,1,'max="10"')}</div>
   <div class="fieldWrap"><label class="fieldLabel">FACTOR H/H ADICIONAL POR RONDA (sobre horas base)</label>${fieldNum('roundFactor',state.roundFactor,0,0.01,'max="2"')}</div>
   <div class="hint">Valor inicial sugerido: 0,12 por ronda. La primera revisión interna ya está incluida en las H/H originales; las rondas adicionales se agregan por separado. No sumar GES-004 por el mismo concepto.</div>
@@ -64,9 +64,35 @@ function renderDashboard(result){const numActive=result.rows.length,sourceCount=
  <section class="section"><div class="sectionHead">06 &nbsp; Base de la estimación</div><div class="sectionBody"><div class="quality">La V1 calcula únicamente ingeniería. Las cantidades derivadas de superficie, hormigón, tonelaje, equipos, líneas y potencia son reglas orientativas, NO correlaciones estadísticas verificadas. Las revisiones internas están dentro de las horas directas; los servicios generales figuran en Gestión. No se incluyen visitas, licencias, materiales, construcción, impuestos, margen comercial ni honorarios de terceros. El exponente 0,70 no se aplica globalmente sin calibración.</div><div class="buttons" style="margin-top:12px"><button class="button buttonPrimary" type="button" data-action="print">⎙ &nbsp; Imprimir propuesta</button><button class="button" type="button" data-action="csv">↓ &nbsp; Exportar matriz CSV</button></div></div></section>`;
 }
 
+function renderCalibration(res){
+ const physical=PHYSICAL_DRIVERS.map(d=>{
+  const hh=safeNum(state.metrics[d.id],0)*safeNum(CALIBRATION.physicalHH[d.id],0),pct=res.total?hh/res.total*100:0;
+  return `<tr><td><strong>${esc(d.label)}</strong><small class="calHelp">${esc(d.hint)}</small></td>
+  <td class="calNum">${format(state.metrics[d.id]||0,2)} ${esc(d.unit)}</td>
+  <td class="calNum"><input class="numberField calInput" type="number" min="0" step="any" value="${esc(CALIBRATION.physicalHH[d.id])}" data-key="calphys:${d.id}" aria-label="H/H adicionales por ${esc(d.unit)} de ${esc(d.label)}"></td>
+  <td class="calNum">${format(hh,2)} H/H</td><td class="calNum">${format(pct,2)}%</td></tr>`;
+ }).join('');
+ const qtyDrivers=QUANTITY_DRIVERS.map(d=>`<div class="calDriver"><label class="fieldLabel">${esc(d.label)}</label><div class="calDriverBody"><input type="number" class="numberField" min="0.01" step="any" data-key="caldriver:${d.id}" value="${esc(CALIBRATION.quantityDrivers[d.id])}"><span>${esc(d.unit)}</span></div></div>`).join('');
+ const rateCount=Object.keys(CALIBRATION.rateOverrides).length;
+ return `<section class="section"><div class="sectionHead">07 &nbsp; Calibración persistente de ingeniería <span class="count">Valores generales</span></div>
+ <div class="sectionBody"><div class="scopeNotice">Los cambios se <strong>guardan automáticamente en este navegador</strong>, incluso después de cerrar la pestaña. Para dejarlos fijos en la web publicada, descargá el archivo y reemplazá <code>data/calibracion.json</code> en GitHub. No cambia el HTML ni el servidor por sí mismo.</div>
+ <div class="calHeadline">01 · H/H físicas complementarias por unidad</div>
+ <div class="warning">Estos aportes son <b>adicionales</b> a las horas por documentos. Comienzan en cero: usalos solo para trabajos no contabilizados en los entregables. Si dos factores cubren el mismo esfuerzo, habrá doble cómputo.</div>
+ <div class="tableWrap"><table class="estTable calibrationTable"><thead><tr><th>Magnitud física</th><th>Valor del proyecto</th><th>H/H extra / unidad</th><th>Aporte extra</th><th>% del total</th></tr></thead><tbody>${physical}</tbody></table></div>
+ <p class="hint">El porcentaje es <b>la participación de ese complemento físico sobre las H/H totales</b>, no el porcentaje total de la disciplina. Las horas provenientes de planos y entregables siguen registradas en la matriz.</p>
+ <div class="calHeadline">02 · Conversión física → cantidad de entregables</div>
+ <p class="hint">Estos parámetros controlan cuántos documentos se proponen en modo rápido. Por ejemplo, un valor menor de m³ por plano de fundación suele generar más planos y H/H; sus efectos son escalonados por el redondeo hacia arriba.</p>
+ <div class="calDriverGrid">${qtyDrivers}</div>
+ <div class="calHeadline">03 · Ratios H/H unitarias generales</div>
+ <p class="hint">${rateCount} ratios guardados como valores generales. Para afinarlos, editá las H/H unitarias en <b>Modo detallado → Matriz</b> y luego hacé clic en “Usar las H/H de la matriz como valores generales”. Las cantidades y otros factores seguirán siendo específicos del proyecto.</p>
+ <div class="buttons"><button class="button buttonPrimary" data-action="cal-publish-rates">↗ Usar H/H de matriz como valores generales</button><button class="button" data-action="cal-export">↓ Descargar calibración definitiva</button><button class="button" data-action="cal-import">↑ Importar calibración</button><button class="button buttonSoft" data-action="cal-reset">↺ Restaurar versión publicada</button></div>
+ <input id="loadCalFile" type="file" accept=".json,application/json" style="display:none">
+ <div class="scopeNotice">Guardar en GitHub: entrar a <code>data/calibracion.json</code> → editar o subir reemplazo → confirmar cambios. Los valores publicados se usan en otros navegadores; los ajustes locales existentes tienen prioridad hasta que se restauren.</div>
+ </div></section>`;
+}
 let activeSBTab='proyecto',activeResultTab='resumen';
 const SB_KEYS=['proyecto','disciplinas','metricas','costos'];
-const RESULT_KEYS=['resumen','entregables','calidad','base'];
+const RESULT_KEYS=['resumen','entregables','calibracion','calidad','base'];
 function setAppTab(which,key){
  const isSB=which==='sb';const keys=isSB?SB_KEYS:RESULT_KEYS;
  if(!keys.includes(key))return;
@@ -104,11 +130,11 @@ function enhanceInterface(result){
  if(!mode||!kpis||!two||sections.length!==4)return;
  mode.classList.add('modeSection');
  const resnav=document.createElement('nav');resnav.className='resultTabs';resnav.setAttribute('aria-label','Secciones de resultados');
- for(const [id,txt] of [['resumen','Resumen'],['entregables','Matriz de entregables'],['calidad','Control de alcance'],['base','Metodología']]){
+ for(const [id,txt] of [['resumen','Resumen'],['entregables','Matriz de entregables'],['calibracion','Calibración'],['calidad','Control de alcance'],['base','Metodología']]){
   const b=document.createElement('button');b.type='button';b.className='resultTab';b.dataset.tab=id;b.setAttribute('role','tab');b.textContent=txt;b.onclick=()=>setAppTab('result',id);resnav.appendChild(b);
  }
  const resPanes={};for(const id of RESULT_KEYS){const c=document.createElement('div');c.className='resultPane';c.dataset.tab=id;resPanes[id]=c;}
- if(mini)resPanes.resumen.appendChild(mini);resPanes.resumen.appendChild(two);const extras=document.createElement('div');extras.innerHTML=renderInsights(result);resPanes.resumen.appendChild(extras);resPanes.calidad.appendChild(sections[1]);resPanes.entregables.appendChild(sections[2]);resPanes.base.appendChild(sections[3]);
+ if(mini)resPanes.resumen.appendChild(mini);resPanes.resumen.appendChild(two);const extras=document.createElement('div');extras.innerHTML=renderInsights(result);resPanes.resumen.appendChild(extras);resPanes.calidad.appendChild(sections[1]);resPanes.entregables.appendChild(sections[2]);const calHost=document.createElement('div');calHost.innerHTML=renderCalibration(result);resPanes.calibracion.appendChild(calHost);resPanes.base.appendChild(sections[3]);
  dash.replaceChildren(mode,kpis,resnav,...Object.values(resPanes));
  setAppTab('sb',activeSBTab);setAppTab('result',activeResultTab);
 }
@@ -121,6 +147,9 @@ function render(){const oldScroll=getPaneScroll();const activeEl=document.active
 }
 function mutate(fn){fn();persist();render();}
 function setOverride(id,key,value){const obj=state.overrides[id]||{};obj[key]=safeNum(value,0);state.overrides[id]=obj;}
-function toggleSelected(id,val){state.selected[id]=val;if(val){const alternatives={'PIP-005':['PIP-006'],'PIP-006':['PIP-005'],'PIP-011':['PIP-012'],'PIP-012':['PIP-011'],'GES-003':['GES-006'],'GES-006':['GES-003']};for(const x of alternatives[id]||[])state.selected[x]=false;}}
-function updateKey(key,value){if(key==='project')state.project=value;if(key==='description')state.description=value;if(key==='filter')state.filter=value;if(key==='rate')state.rate=safeNum(value,0,0,1e9);if(key==='clientRounds')state.clientRounds=safeNum(value,0,0,10);if(key==='roundFactor')state.roundFactor=safeNum(value,0,0,2);if(key.startsWith('metric:'))state.metrics[key.split(':')[1]]=safeNum(value,0);if(key.startsWith('qty:'))setOverride(key.slice(4),'quantity',value);if(key.startsWith('unit:'))setOverride(key.slice(5),'rate',value);if(key.startsWith('fc:'))setOverride(key.slice(3),'complexity',value);if(key.startsWith('fr:'))setOverride(key.slice(3),'repetition',value);}
+// Ninguna selección debe desactivar silenciosamente otros entregables.
+// Cuando dos métodos son alternativos (p. ej. isométricos manuales y extraídos del
+// modelo 3D), se muestran advertencias; el usuario define explícitamente cantidades.
+function toggleSelected(id,val){state.selected[id]=Boolean(val);}
+function updateKey(key,value){if(key==='project')state.project=value;if(key==='description')state.description=value;if(key==='filter')state.filter=value;if(key==='rate')state.rate=safeNum(value,0,0,1e9);if(key.startsWith('calphys:')){CALIBRATION.physicalHH[key.slice(8)]=safeNum(value,0,0,1e5);persistCalibration();}if(key.startsWith('caldriver:')){const id=key.slice(10);CALIBRATION.quantityDrivers[id]=safeNum(value,1,0.01,1e9);persistCalibration();}if(key==='clientRounds')state.clientRounds=safeNum(value,0,0,10);if(key==='roundFactor')state.roundFactor=safeNum(value,0,0,2);if(key.startsWith('metric:'))state.metrics[key.split(':')[1]]=safeNum(value,0);if(key.startsWith('qty:'))setOverride(key.slice(4),'quantity',value);if(key.startsWith('unit:'))setOverride(key.slice(5),'rate',value);if(key.startsWith('fc:'))setOverride(key.slice(3),'complexity',value);if(key.startsWith('fr:'))setOverride(key.slice(3),'repetition',value);}
 function visibleRatios(){const term=(state.filter||'').trim().toLowerCase();return RATIOS.filter(r=>state.disc[r.disciplina]&&stageEligible(r)&&modelEligible(r)&&(!state.onlySelected||state.selected[r.id])&&(!term||`${r.entregable} ${r.id} ${r.unidad}`.toLowerCase().includes(term)));}

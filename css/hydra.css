@@ -56,3 +56,14 @@ body{background:var(--bg)}button,input,select,textarea{font-family:var(--font-mo
 .miniMetricBand span{font-size:9px;color:#9393a0}.miniMetricBand strong{font-size:12px;color:#2dd4bf;font-family:var(--font-mono);white-space:normal}
 @media(max-width:720px){.miniMetricBand{grid-template-columns:1fr}.deliverableInfo{max-width:250px}}
 @media print{.deliverableInfo,.scopeTag{display:none!important}}
+
+/* ESTIMA V4.3 · Calibración de ratios, compatible con Hydra */
+.calHeadline{font-size:11px;color:var(--teal);font-weight:600;letter-spacing:.07em;text-transform:uppercase;margin:19px 0 10px}
+.calibrationTable{min-width:735px}.calibrationTable .calNum{text-align:right;white-space:nowrap}.calibrationTable .calInput{width:115px;max-width:115px;margin:0;text-align:right}
+.calHelp{display:block;font-size:9px;max-width:260px;color:#83838e;line-height:1.45;margin-top:4px;font-weight:normal}
+.calDriverGrid{display:grid;grid-template-columns:repeat(3,minmax(155px,1fr));gap:11px}
+.calDriver{background:#1a1a1e;border:1px solid var(--line);padding:10px;border-radius:4px;min-width:0}
+.calDriverBody{display:flex;align-items:center;gap:8px}.calDriverBody .numberField{flex:1;min-width:50px;margin-bottom:0}
+.calDriverBody span{font-size:9px;color:#888893;white-space:nowrap}
+@media(max-width:1020px){.calDriverGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.calDriverGrid{grid-template-columns:1fr}}

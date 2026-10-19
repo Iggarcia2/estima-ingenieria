@@ -1,0 +1,25 @@
+{
+  "schema": "estima_calibracion_v1",
+  "version": "4.3",
+  "physicalHH": {
+    "area": 0,
+    "concrete": 0,
+    "steel": 0,
+    "mass": 0,
+    "lines": 0,
+    "power": 0
+  },
+  "quantityDrivers": {
+    "m2_por_plano_civil": 1500,
+    "m3_por_tipo_fundacion": 80,
+    "m3_por_plano_fundacion": 130,
+    "m3_por_plano_armadura": 200,
+    "t_por_plano_estructural": 12,
+    "t_por_plano_uniones": 15,
+    "t_por_plano_taller": 5,
+    "t_por_tipo_union": 20,
+    "equipos_por_especificacion": 5
+  },
+  "rateOverrides": {},
+  "nota": "Aportes físicos COMPLEMENTARIOS; no están validados y pueden solaparse con horas por entregable. Valores cero por defecto."
+}
