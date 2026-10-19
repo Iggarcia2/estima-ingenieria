@@ -82,9 +82,4 @@ async function startApp(){
  catch(err){console.warn('No se pudo cargar el proyecto guardado',err);}
  render();
 }
-startApp().catch(error=>{
- console.error(error);
- const errorMarkup='<div style="max-width:750px;margin:48px auto;padding:24px;background:#18181b;border:1px solid #f59e0b;border-radius:8px"><h2 style="color:#f59e0b">No se pudo iniciar ESTIMA</h2><p>'+esc(error.message)+'</p><p>Para trabajar con archivos separados, abrí el sitio con un servidor HTTP (por ejemplo, GitHub Pages o <code>python -m http.server 8000</code>). No funciona abriendo <code>index.html</code> directamente con <code>file://</code>.</p></div>';
- document.getElementById('screen').innerHTML=errorMarkup;
- document.getElementById('calcStatus').textContent='Error de carga';
-});
+// La interfaz simplificada inicializa la aplicación después de cargar todos los módulos.
