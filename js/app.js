@@ -35,8 +35,53 @@ function handleAction(action){if(action==='cal-export'){downloadCalibration();re
  if(action==='none-visible'){mutate(()=>{for(const r of visibleRatios())toggleSelected(r.id,false);});return;}
  if(action.startsWith('mode:')){activeResultTab=action.endsWith('detallado')?'entregables':'resumen';mutate(()=>{state.mode=action.slice(5);});return;}
 }
-document.addEventListener('input',e=>{const el=e.target;if(!el.matches('[data-key]'))return;if(el.type==='checkbox')return;const key=el.dataset.key;if(key.startsWith('calphys:')||key.startsWith('caldriver:')||key.startsWith('callod:'))return;mutate(()=>updateKey(key,el.value));});
+// Mientras se escribe, NO recrear el input: en los number esto mueve el cursor
+// al inicio y convierte, por ejemplo, 125 en 521. El resumen se actualiza sin
+// sustituir el nodo que tiene el foco; las tablas completas, al terminar.
+let inputRenderTimer=null;
+function refreshLiveEstimate(){
+ const result=calculate();
+ const kpis=document.querySelectorAll('#dashboard .simpleKpi');
+ if(kpis.length>=2){
+  const direct=kpis[0].querySelector('strong'),directSub=kpis[0].querySelector('small');
+  const price=kpis[1].querySelector('strong'),priceSub=kpis[1].querySelector('small');
+  if(direct)direct.textContent=format(result.total,1);
+  if(directSub)directSub.textContent=format(result.direct,1)+' directas · '+format(result.indirect,1)+' coordinación';
+  if(price)price.textContent=money(result.budget);
+  if(priceSub)priceSub.textContent=money(state.rate)+' por H/H · sin margen ni impuestos';
+ }
+ const status=document.getElementById('calcStatus');
+ if(status)status.textContent='● '+format(result.total,1)+' H/H · '+result.rows.length+' ítems';
+ if(typeof enhanceInterface==='function')enhanceInterface(result);
+ window.__ultimaEstimacion={hh_directas:result.direct,hh_indirectas:result.indirect,hh_totales:result.total,presupuesto:result.budget,actividades:result.rows.length};
+ // Filtrar entregables sin destruir el cuadro de búsqueda que se está editando.
+ if(typeof refreshSimpleMatrixFilter==='function'&&document.activeElement?.dataset?.key==='filter')refreshSimpleMatrixFilter(result);
+}
+function scheduleInputRender(){
+ clearTimeout(inputRenderTimer);
+ inputRenderTimer=setTimeout(()=>{
+  if(document.activeElement?.matches?.('input[data-key], textarea[data-key]'))return;
+  render();
+ },180);
+}
+document.addEventListener('input',e=>{
+ const el=e.target;if(!el.matches('[data-key]')||el.type==='checkbox')return;
+ // Permite borrar y reescribir sin forzar 0 sobre un campo incompleto.
+ if(el.type==='number'&&(el.validity.badInput||el.value===''))return;
+ updateKey(el.dataset.key,el.value);
+ persist();
+ refreshLiveEstimate();
+});
+document.addEventListener('focusout',e=>{
+ if(e.target.matches?.('input[data-key], textarea[data-key]'))scheduleInputRender();
+});
 document.addEventListener('change',e=>{const el=e.target;
+ // Confirma también el borrado completo (0) y flechas del campo sin reconstruirlo antes del click siguiente.
+ if(el.matches?.('input[data-key], textarea[data-key]')){
+  if(el.type==='number'&&el.validity.badInput)return;
+  updateKey(el.dataset.key,el.value);persist();refreshLiveEstimate();
+  scheduleInputRender();return;
+ }
  if(el.dataset?.['3dSelect']){
   const d=get3dDraft();
   if(el.dataset['3dSelect']==='model3d'&&Object.hasOwn(MODEL_SCOPES,el.value))d.model3d=el.value;

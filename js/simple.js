@@ -67,6 +67,14 @@ function simpleMatrix(result){
  return blocks.join('')||'<p class="simpleHint">No hay documentos con los filtros actuales.</p>';
 }
 
+// Búsqueda instantánea mientras el campo mantiene su foco y posición de cursor.
+function refreshSimpleMatrixFilter(result){
+ const root=document.getElementById('simpleMatrixResults');
+ if(!root)return;
+ preserveSimpleOpen();
+ root.innerHTML=simpleMatrix(result);
+}
+
 renderDashboard=function(result){
  const discColors=Object.fromEntries(DISC.map(d=>[d.id,d.color]));
  const roleColors=Object.fromEntries(Object.keys(ROLE_LABEL).map((x,i)=>[x,['#315e87','#628eae','#7ba196','#8399c1','#c6a77a','#9c88ad'][i]]));
@@ -81,7 +89,7 @@ renderDashboard=function(result){
  <p class="simpleHint simpleSummaryHint">Etapas seleccionadas: ${esc(stageInfoText())}. Los resultados son preliminares; revisá la matriz antes de ofertar.</p><button class="button simpleFullBtn" type="button" data-simple-tab="entregables">Revisar entregables →</button></div>
  <div class="resultPane" data-tab="entregables"><div class="simpleDocTop"><div><h3>Documentos incluidos</h3><p class="simpleHint">Podés marcar o quitar documentos; para editar las horas pasá a «Editar cantidades».</p></div><div class="modeTabs"><button class="modeBtn ${state.mode==='rapido'?'active':''}" data-action="mode:rapido">Vista rápida</button><button class="modeBtn ${state.mode==='detallado'?'active':''}" data-action="mode:detallado">Editar cantidades</button></div></div>
  <div class="simpleTools"><input class="textField" placeholder="Buscar documento…" data-key="filter" value="${esc(state.filter)}" aria-label="Buscar documentos"><label class="simpleCheck"><input type="checkbox" data-check="onlySelected" ${state.onlySelected?'checked':''}>Solo incluidos</label><button class="button buttonTiny" data-action="simple-factors">${simpleShowFactors?'Ocultar factores':'Ver Fc/Fr y fuentes'}</button></div>
- ${simpleMatrix(result)}<p class="simpleHint" style="margin-top:12px">H/H = cantidad × horas unitarias × complejidad × repetición. La fuente del alcance no certifica el ratio horario.</p></div>
+ <div id="simpleMatrixResults">${simpleMatrix(result)}</div><p class="simpleHint" style="margin-top:12px">H/H = cantidad × horas unitarias × complejidad × repetición. La fuente del alcance no certifica el ratio horario.</p></div>
  <div class="resultPane" data-tab="avanzado"><div class="simpleAdvancedIntro"><h3>Opciones avanzadas y ayuda</h3><p class="simpleHint">No necesitás configurar esto para obtener un presupuesto inicial.</p></div>
  ${detailTag('guia','ⓘ Qué significa cada campo',`<div class="simpleStageGuide">${Object.entries(STAGE_EXPLAIN).map(([k,v])=>`<p><b>${STAGE_LABEL[k]}:</b> ${esc(v.purpose)}. ${esc(v.items)}</p>`).join('')}</div>${renderFieldGuide()}`)}
  ${detailTag('alertas',`⚠ Avisos para revisar (${result.warnings.length})`,result.warnings.map(w=>`<div class="simpleAlert">${esc(w)}</div>`).join('')||'<p class="simpleHint">Sin advertencias.</p>')}

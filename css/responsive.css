@@ -1,0 +1,115 @@
+/* ESTIMA V5.1 · Diseño adaptable sin alterar la estimación ni impresión. */
+/* Las columnas se dimensionan de forma fluida: el panel de resultados nunca fuerza el ancho de la página. */
+*{min-width:0}
+.gridMain > *{min-width:0}
+#dashboard .simpleKpi strong{overflow-wrap:anywhere}
+/* Escritorio: calculadora a la izquierda y resultado a la derecha. */
+@media(min-width:1101px){
+ .gridMain{grid-template-columns:clamp(320px,28vw,420px) minmax(0,1fr)!important}
+ .sidebar{overflow-y:auto!important}
+ .dashboard{overflow:hidden!important}
+ .simpleMetricGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+/* Tablet o ventana angosta: deja de comprimir las dos columnas y apila secciones. */
+@media(max-width:1100px){
+ html,body{height:auto!important;min-height:100%;overflow-x:hidden!important;overflow-y:auto!important}
+ .app{height:auto!important;min-height:calc(100dvh - 52px);overflow:visible!important}
+ .gridMain{display:flex!important;flex-direction:column!important;flex:1 0 auto!important;overflow:visible!important;min-height:auto!important}
+ .sidebar{width:100%;display:block!important;overflow:visible!important;border-right:0!important;border-bottom:1px solid var(--line)}
+ .dashboard{width:100%;height:auto!important;min-height:0!important;overflow:visible!important;display:flex!important;flex-direction:column}
+ #dashboard .resultPane,#dashboard .resultPane.active{min-height:0!important;overflow:visible!important;flex:initial!important}
+ .simpleResultTabs{position:sticky;top:0;z-index:12}
+ .simpleMetricGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ body{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))!important}
+ .mobileTotals{position:fixed;bottom:0;left:0;right:0;z-index:90;display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:58px;height:auto;text-align:left;padding:9px 15px calc(9px + env(safe-area-inset-bottom,0px));background:#10201f;border:0;border-top:1px solid rgba(45,212,191,.42);box-shadow:0 -8px 26px #0008;color:#e8fffa;cursor:pointer}
+ .mobileTotals>span{display:flex;flex-direction:column;gap:2px;min-width:0}
+ .mobileTotals small{font:500 9px var(--font-mono);color:#a3c7c0}
+ .mobileTotals b{font:600 17px var(--font-sans);color:#2dd4bf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .mobileTotals .mobileArrow{color:#2dd4bf;font:600 11px var(--font-mono)}
+ .simpleKpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .topbar{width:100%;min-width:0}
+ .footer{height:auto;min-height:29px;white-space:normal;line-height:1.4}
+}
+@media(min-width:681px) and (max-width:1100px){
+ .sidebar{padding:16px 20px!important}
+ .simpleMetricGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .simpleMetricGrid .fieldWrap{min-width:0}
+ .simpleSection .sectionBody{padding:16px!important}
+ .dashboard .simpleKpis{gap:14px}
+ .dashboard .simpleHeader{padding:20px}
+ #dashboard .resultPane{padding:18px 20px 35px}
+}
+/* Celular: formularios cómodos y entregables como tarjetas en vez de tabla horizontal. */
+@media(max-width:680px){
+ .simpleMetricGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .simpleMetric{min-width:0}
+ .gridMain{width:100%}
+ .sidebar{padding:10px 10px 16px!important}
+ .simpleHeader{gap:9px;align-items:flex-start;flex-wrap:wrap}
+ .simpleResultActions{margin-left:0}
+ .simpleDocTop .modeTabs{display:flex;flex-wrap:wrap;max-width:100%}
+ .simpleDocTop .modeBtn{white-space:normal}
+ .simpleDiscDetails>summary{flex-wrap:wrap;gap:7px}
+ .simpleDiscTitle{white-space:normal;max-width:100%}
+ .simpleDiscValue{margin-left:0;white-space:normal}
+ .simpleTools .textField{min-width:0;flex:1 1 100%;max-width:none}
+ .simpleTools .button{margin-left:0}
+ .simpleResultTabs{justify-content:space-around}
+ .simpleResultTab{white-space:normal;text-align:center;line-height:1.25}
+ .simpleDiscDetails .simpleDetailsInner{overflow:visible}
+ .simpleMatrixTable{overflow:visible!important}
+ .simpleMatrixTable .estTable{min-width:0!important;width:100%!important;border-collapse:separate}
+ .simpleMatrixTable .estTable thead{display:none}
+ .simpleMatrixTable .estTable tbody{display:grid;gap:9px;padding:8px}
+ .simpleMatrixTable .estTable tbody tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:7px 10px;padding:12px;border:1px solid var(--line);background:#18181b;border-radius:7px;min-width:0}
+ .simpleMatrixTable .estTable tbody tr.deselected{opacity:.65}
+ .simpleMatrixTable .estTable tbody td{display:block;min-width:0;padding:0!important;border:none!important;font-size:11px;white-space:normal}
+ .simpleMatrixTable .estTable tbody td:nth-child(2){grid-column:1/-1;grid-row:1}
+ .simpleMatrixTable .estTable tbody td:nth-child(1){grid-column:1;grid-row:2;width:auto!important;text-align:left!important}
+ .simpleMatrixTable .estTable tbody td:nth-child(1)::after{content:'  Incluir';color:#abb4ba;font-size:10px}
+ .simpleMatrixTable .estTable tbody td:nth-child(6){grid-column:2;grid-row:2;text-align:right}
+ .simpleMatrixTable .estTable tbody td:nth-child(6)::before{content:'Total H/H ';color:#94a3a9;font-size:10px;font-weight:400}
+ .simpleMatrixTable .estTable tbody td:nth-child(3){grid-column:1;grid-row:3}
+ .simpleMatrixTable .estTable tbody td:nth-child(3)::before{content:'Cantidad';display:block;color:#a4a4ad;font-size:9px;margin-bottom:4px}
+ .simpleMatrixTable .estTable tbody td:nth-child(4){grid-column:2;grid-row:3}
+ .simpleMatrixTable .estTable tbody td:nth-child(4)::before{content:'H/H por unidad';display:block;color:#a4a4ad;font-size:9px;margin-bottom:4px}
+ #dashboard.simpleFactorsVisible .simpleMatrixTable .estTable tbody td:nth-child(5){grid-column:1/-1;grid-row:4;display:block}
+ #dashboard.simpleFactorsVisible .simpleMatrixTable .estTable tbody td:nth-child(5)::before{content:'Complejidad / Repetición';display:block;color:#a4a4ad;font-size:9px;margin-bottom:4px}
+ #dashboard.simpleFactorsVisible .simpleMatrixTable .estTable tbody td:nth-child(7){grid-column:1/-1;grid-row:5;display:block}
+ .simpleMatrixTable .estTable .delName{font-size:12px;line-height:1.45}
+ .simpleMatrixTable .estTable .delDescription{white-space:normal;overflow-wrap:anywhere}
+ .simpleMatrixTable .estTable .numEdit{width:100%;max-width:130px;min-height:35px}
+ .simpleMatrixTable .estTable .numEdit.small{width:100%}
+ .simpleMatrixTable .estTable .cellNumber{color:#2dd4bf}
+}
+@media(max-width:520px){
+ .topbar{height:auto!important;min-height:52px!important;padding:8px 10px!important;display:flex!important;align-items:center!important;flex-wrap:wrap!important;gap:7px!important}
+ .brand{margin-right:auto}
+ .brand-copy span{display:none}
+ .tb-divider{display:none}
+ .statusZone{display:none}
+ .topActions{margin-left:auto}
+ .topActions .tb-btn{padding:0 7px;font-size:10px!important}
+ .calibrationStrip{padding:8px 10px}
+ .stripExtra{display:none}
+ .simpleKpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .simpleKpi{padding:10px;gap:4px}
+ .simpleKpi strong{font-size:clamp(19px,5.2vw,25px)!important}
+ .mobileTotals b{font-size:clamp(13px,4.2vw,16px)}
+}
+@media(max-width:360px){
+ .simpleKpis{grid-template-columns:minmax(0,1fr)}
+ .simpleMetricGrid{gap:7px}
+ .mobileTotals{gap:5px;padding-left:10px;padding-right:10px}
+ .mobileTotals b{font-size:13px}
+ .simpleDiscTitle{font-size:11px}
+}
+@media (max-height:500px) and (max-width:1100px){
+ .mobileTotals{min-height:45px;padding-top:5px;padding-bottom:5px}
+ .simpleResultTabs{position:static}
+}
+@media print{
+ body{padding:0!important}
+ .mobileTotals{display:none!important}
+ .simpleMatrixTable .estTable tbody{display:table-row-group}
+}

@@ -1,45 +1,8 @@
-# ESTIMA V6 — Asistente guiado para presupuestos de ingeniería
-
-La V6 inicia con un flujo de **cinco pasos**: Proyecto → Dimensiones → Alcance → Horas y tarifa → Propuesta.
-
-* Todas las selecciones siguen utilizando el motor y la biblioteca de la V5 (101 actividades).
-* Se puede retroceder, acceder directamente a cualquier paso, y regresar al modo **Vista avanzada** sin perder el proyecto.
-* El modelado 3D requiere pulsar **Aplicar 3D al presupuesto**, para evitar sustituciones ocultas de entregables.
-* La propuesta final ofrece impresión/PDF, CSV y proyecto JSON.
-* El trabajo se guarda automáticamente en almacenamiento local del navegador. La calibración de ratios puede publicarse mediante `data/calibracion.json`.
-* Los ratios de H/H incluyen hipótesis no validadas: revisar antes de ofertar.
-
-## Publicar en GitHub Pages
-
-1. Descomprimir y copiar los archivos y carpetas en la raíz del repositorio `iggarcia2/estima-ingenieria` (no subir la carpeta contenedora).
-2. Confirmar los cambios en `main`.
-3. Ir a **Settings → Pages → Deploy from a branch → main → /(root)**.
-4. Abrir https://iggarcia2.github.io/estima-ingenieria/ .
-
-Usar un servidor HTTP o GitHub Pages para abrir la versión modular (el modo `file://` no puede cargar los JSON).
-
-## Estructura
-
-- `index.html`: documento principal
-- `css/`: visual Hydra, V5 y wizard V6
-- `js/wizard.js`: navegación y experiencia de 5 pasos
-- `js/estimacion.js`: motor de horas
-- `js/config.js`: catálogos y configuración
-- `data/biblioteca_ratios.json`: entregables y HH unitarias
-- `data/calibracion.json`: ratios globales publicados
-- `tests/`: comprobaciones automatizadas
-
-## Nota sobre cálculos
-
-No se alteraron las fórmulas del motor de la V5. La selección automática de disciplinas y magnitudes depende de la tipología y toma cantidades de **ejemplo**. El usuario debe reemplazarlas por datos de su proyecto y validar entregables, revisiones y solapamientos. Los estándares de CAI/CEPSI respaldan definiciones de alcance, no coeficientes de H/H.
-
----
-
-# ESTIMA V5.0 — Presupuestos de ingeniería, más simples
+# ESTIMA V5.1.0 — Presupuestos de ingeniería, más simples
 
 **Estimador de horas hombre y presupuesto de ingeniería multidisciplinaria** para publicar directamente con **GitHub Pages**. Conserva la biblioteca de 101 actividades, cálculos por disciplina y perfil, etapas independientes, modelado 3D opcional y calibración; simplifica lo que se muestra al comenzar.
 
-## Novedades V5
+## Novedades V5.1
 
 En la pantalla principal solamente hay tres secciones de entrada:
 
@@ -68,7 +31,7 @@ Repositorio existente: <https://github.com/iggarcia2/estima-ingenieria>
 1. Descomprimí el ZIP.
 2. Subí **el contenido** de la carpeta a la **raíz** del repositorio, sobrescribiendo archivos homónimos (`index.html`, `css/`, `js/`, `data/`, `docs/`). No subas una carpeta contenedora como nivel adicional.
 3. Si GitHub Pages ya está activo en rama `main` / carpeta `/ (root)`, no necesitás cambiar la configuración. Si todavía no lo está: **Settings → Pages → Deploy from a branch → main → / (root)**.
-4. Abrí <https://iggarcia2.github.io/estima-ingenieria/> cuando termine el despliegue. Si no ves la V5, hacé una actualización forzada del navegador.
+4. Abrí <https://iggarcia2.github.io/estima-ingenieria/> cuando termine el despliegue. Si no ves la V5.1, hacé una actualización forzada del navegador.
 
 Para probar en computadora sin publicar, ejecutá `python -m http.server 8000` en la carpeta y abrí `http://localhost:8000/`. No uses `file://` porque la biblioteca JSON se carga por `fetch()`.
 
@@ -84,7 +47,7 @@ js/estimacion.js        <-- motor H/H
 js/interfaz.js          <-- funciones base y matriz
 js/exportacion.js       <-- CSV, JSON, propuesta imprimible
 js/app.js               <-- eventos y persistencia
-js/simple.js            <-- presentación simplificada V5
+js/simple.js            <-- presentación simplificada V5.1
  data/biblioteca_ratios.json  <-- 101 actividades
  data/calibracion.json        <-- defaults compartidos
  docs/metodologia.md
@@ -114,3 +77,12 @@ python tests/verificar_interfaz_simple.py
 - Antes de utilizar una estimación en un contrato, revisá cantidades y entregables de la propuesta.
 
 Archivos de referencia de etapas y alcances: `docs/metodologia.md`. Las notas de versiones anteriores están en `docs/`.
+
+
+### Cambios V5.1 · Campos numéricos y diseño adaptable
+
+- Corregido el cursor en todos los inputs numéricos: la pantalla ya no reconstruye el campo en cada tecla; escribir `125` conserva `125`.
+- Los totales y presupuesto se refrescan durante la entrada; el resto de las tablas al terminar la edición.
+- La búsqueda de documentos se filtra mientras se escribe, sin perder el cursor.
+- Adaptación a escritorio (2 columnas), tablet (bloques apilados) y celular (tarjetas de entregables), incluida barra inferior con total.
+- No se cambiaron las fórmulas, los ratios, ni el formato del estado guardado: los proyectos y calibraciones de versiones anteriores siguen siendo compatibles.
